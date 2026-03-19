@@ -8,7 +8,7 @@ from langchain_core.prompts import PromptTemplate
 from langgraph.constants import START, END
 from langgraph.graph.state import StateGraph
 
-from src.rag.reAct_agent import agent_executor
+import src.rag.reAct_agent as reAct_agent_module
 from src.rag.retriever_setup import get_retriever
 from src.config.settings import Config
 from src.llms.openai import llm
@@ -20,7 +20,6 @@ from src.tools.graph_tools import routing_tool, doc_tool
 config = Config()
 
 
-# Node implementations
 def query_classifier(state: State):
     """
     Classify the query to determine if it's related to indexed documents.
@@ -77,9 +76,9 @@ def retriever_node(state: State):
         dict: Updated messages with tool calls.
     """
     messages = state["latest_query"]
-    result = agent_executor.invoke({"input": messages})
+    # Use module reference so it always gets the latest agent after rebuild
+    result = reAct_agent_module.agent_executor.invoke({"input": messages})
 
-    # Extract tool calls
     intermediate_steps = result.get("intermediate_steps", [])
     tool_calls = []
     if intermediate_steps:
@@ -93,10 +92,7 @@ def retriever_node(state: State):
         content=result["output"],
         additional_kwargs={"tool_calls": tool_calls},
     )
-
-    return {
-        "messages": [new_message]
-    }
+    return {"messages": [new_message]}
 
 
 def grade(state: State):
@@ -117,7 +113,6 @@ def grade(state: State):
     question = state["latest_query"]
 
     llm_with_grade = llm.with_structured_output(Grade)
-
     chain_graded = grading_prompt | llm_with_grade
     result = chain_graded.invoke({"question": question, "context": context})
 
@@ -133,9 +128,10 @@ def rewrite_query(state: State):
         state (State): State of the question.
 
     Returns:
-        dict: Updated latest_query.
+        dict: Updated latest_query and incremented rewrite_count.
     """
     query = state["latest_query"]
+    rewrite_count = (state.get("rewrite_count") or 0) + 1
     rewrite_prompt = PromptTemplate(
         template=config.prompt("rewrite_prompt"),
         input_variables=["query"]
@@ -143,9 +139,9 @@ def rewrite_query(state: State):
     chain = rewrite_prompt | llm
     result = chain.invoke({"query": query})
     print(result)
-
     return {
-        "latest_query": result.content
+        "latest_query": result.content,
+        "rewrite_count": rewrite_count
     }
 
 
@@ -182,15 +178,10 @@ def web_search(state: State):
     Returns:
         dict: Search results as messages.
     """
-    # Initialize the Tavily tool
     search_tool = TavilySearchResults()
-
-    # Search a query
     result = search_tool.invoke(state["latest_query"])
-
     contents = [item["content"] for item in result if "content" in item]
     print(contents)
-
     return {
         "messages": [{"role": "assistant", "content": "\n\n".join(contents)}]
     }
@@ -217,4 +208,3 @@ graph.add_edge("generate", END)
 graph.add_edge("general_llm", END)
 
 builder = graph.compile()
-

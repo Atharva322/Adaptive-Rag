@@ -3,16 +3,18 @@ Retriever setup and vector store configuration.
 """
 
 import os
+from pathlib import Path
 
 from langchain_core.documents import Document
 from langchain_core.tools import create_retriever_tool
 from langchain_openai import OpenAIEmbeddings
-# from langchain_qdrant import QdrantVectorStore
 from langchain_community.vectorstores import FAISS
 
 from src.core.config import settings
 
 embeddings = OpenAIEmbeddings()
+
+VECTORSTORE_PATH = "./vector_stores/faiss_index"
 
 # Global variable to store the FAISS vectorstore instance
 # This ensures get_retriever() can access documents stored by retriever_chain()
@@ -32,14 +34,6 @@ def retriever_chain(chunks: list[Document]):
     global _faiss_vectorstore
 
     try:
-        # Commenting out Qdrant code for temporary FAISS usage
-        # vectorstore = QdrantVectorStore.from_documents(
-        #     documents=chunks,
-        #     embedding=embeddings,
-        #     url=settings.QDRANT_URL,
-        #     api_key=settings.QDRANT_API_KEY,
-        #     collection_name=settings.CODE_COLLECTION,
-        # )
         vectorstore = FAISS.from_documents(
             documents=chunks,
             embedding=embeddings
@@ -72,30 +66,15 @@ def get_retriever():
     global _faiss_vectorstore
 
     try:
-        # Commenting out Qdrant code for temporary FAISS usage
-        # vectorstore = QdrantVectorStore.from_documents(
-        #     documents=[],
-        #     embedding=embeddings,
-        #     url=settings.QDRANT_URL,
-        #     api_key=settings.QDRANT_API_KEY,
-        #     collection_name=settings.CODE_COLLECTION,
-        # )
-        # retriever = vectorstore.as_retriever()
-
-        # Use the global vectorstore if it exists (documents have been uploaded)
         if _faiss_vectorstore is not None:
             retriever = _faiss_vectorstore.as_retriever()
             print("Using existing FAISS vectorstore with uploaded documents")
         else:
-            # No documents uploaded yet, create dummy for initialization
             print("No documents uploaded yet, creating dummy vectorstore")
-            from langchain_core.documents import Document as LangChainDocument
-
-            dummy_doc = LangChainDocument(
+            dummy_doc = Document(
                 page_content="No documents have been uploaded yet. Please upload a document first.",
                 metadata={"source": "initialization"}
             )
-
             _faiss_vectorstore = FAISS.from_documents(
                 documents=[dummy_doc],
                 embedding=embeddings
@@ -121,3 +100,19 @@ def get_retriever():
     except Exception as e:
         print(f"Error initializing retriever: {e}")
         raise Exception(e)
+
+
+def save_vectorstore(vectorstore):
+    """Save FAISS vectorstore to disk after upload"""
+    Path(VECTORSTORE_PATH).parent.mkdir(parents=True, exist_ok=True)
+    vectorstore.save_local(VECTORSTORE_PATH)
+    print(f"Vector store saved to {VECTORSTORE_PATH}")
+
+
+def load_vectorstore():
+    """Load FAISS vectorstore from disk for queries"""
+    if os.path.exists(VECTORSTORE_PATH):
+        vs = FAISS.load_local(VECTORSTORE_PATH, embeddings, allow_dangerous_deserialization=True)
+        print(f"Vector store loaded from {VECTORSTORE_PATH}")
+        return vs
+    return None
