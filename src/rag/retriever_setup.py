@@ -26,12 +26,16 @@ def _try_load_from_disk():
     if os.path.exists(VECTORSTORE_PATH):
         try:
             _faiss_vectorstore = FAISS.load_local(
-                VECTORSTORE_PATH, embeddings, allow_dangerous_deserialization=True
+                folder_path=VECTORSTORE_PATH, 
+                embeddings=embeddings, 
+                allow_dangerous_deserialization=True
             )
-            print(f"Vector store loaded from disk: {VECTORSTORE_PATH}")
+            print(f"✓ Vector store loaded from disk: {VECTORSTORE_PATH}")
         except Exception as e:
-            print(f"Could not load vector store from disk: {e}")
+            print(f"⚠ Could not load vector store from disk: {e}")
             _faiss_vectorstore = None
+    else:
+        print("ℹ No persistent vector store found on disk")
 
 
 # Try to load from disk immediately when module is imported
@@ -123,18 +127,27 @@ def get_retriever():
 
 def save_vectorstore(vectorstore):
     """Save FAISS vectorstore to disk."""
-    Path(VECTORSTORE_PATH).parent.mkdir(parents=True, exist_ok=True)
-    vectorstore.save_local(VECTORSTORE_PATH)
-    print(f"Vector store saved to {VECTORSTORE_PATH}")
+    try:
+        Path(VECTORSTORE_PATH).parent.mkdir(parents=True, exist_ok=True)
+        vectorstore.save_local(VECTORSTORE_PATH)
+        print(f"✓ Vector store saved to {VECTORSTORE_PATH}")
+    except Exception as e:
+        print(f"⚠ Error saving vector store: {e}")
 
 
 def load_vectorstore():
     """Load FAISS vectorstore from disk."""
     global _faiss_vectorstore
     if os.path.exists(VECTORSTORE_PATH):
-        _faiss_vectorstore = FAISS.load_local(
-            VECTORSTORE_PATH, embeddings, allow_dangerous_deserialization=True
-        )
-        print(f"Vector store loaded from {VECTORSTORE_PATH}")
-        return _faiss_vectorstore
+        try:
+            _faiss_vectorstore = FAISS.load_local(
+                folder_path=VECTORSTORE_PATH, 
+                embeddings=embeddings, 
+                allow_dangerous_deserialization=True
+            )
+            print(f"✓ Vector store loaded from {VECTORSTORE_PATH}")
+            return _faiss_vectorstore
+        except Exception as e:
+            print(f"⚠ Error loading vector store: {e}")
+            return None
     return None
