@@ -16,9 +16,26 @@ embeddings = OpenAIEmbeddings()
 
 VECTORSTORE_PATH = "./vector_stores/faiss_index"
 
-# Global variable to store the FAISS vectorstore instance
-# This ensures get_retriever() can access documents stored by retriever_chain()
+# Global variable - populated either from disk (on startup) or after upload
 _faiss_vectorstore = None
+
+
+def _try_load_from_disk():
+    """Attempt to load vectorstore from disk at module import time."""
+    global _faiss_vectorstore
+    if os.path.exists(VECTORSTORE_PATH):
+        try:
+            _faiss_vectorstore = FAISS.load_local(
+                VECTORSTORE_PATH, embeddings, allow_dangerous_deserialization=True
+            )
+            print(f"Vector store loaded from disk: {VECTORSTORE_PATH}")
+        except Exception as e:
+            print(f"Could not load vector store from disk: {e}")
+            _faiss_vectorstore = None
+
+
+# Try to load from disk immediately when module is imported
+_try_load_from_disk()
 
 
 def retriever_chain(chunks: list[Document]):
@@ -39,8 +56,10 @@ def retriever_chain(chunks: list[Document]):
             embedding=embeddings
         )
 
-        # Store the vectorstore globally so get_retriever() can access it
         _faiss_vectorstore = vectorstore
+
+        # Persist to disk immediately after creating
+        save_vectorstore(vectorstore)
 
         print("FAISS vector store initialized with documents")
         print(f"Vectorstore contains {len(chunks)} document chunks")
@@ -103,16 +122,19 @@ def get_retriever():
 
 
 def save_vectorstore(vectorstore):
-    """Save FAISS vectorstore to disk after upload"""
+    """Save FAISS vectorstore to disk."""
     Path(VECTORSTORE_PATH).parent.mkdir(parents=True, exist_ok=True)
     vectorstore.save_local(VECTORSTORE_PATH)
     print(f"Vector store saved to {VECTORSTORE_PATH}")
 
 
 def load_vectorstore():
-    """Load FAISS vectorstore from disk for queries"""
+    """Load FAISS vectorstore from disk."""
+    global _faiss_vectorstore
     if os.path.exists(VECTORSTORE_PATH):
-        vs = FAISS.load_local(VECTORSTORE_PATH, embeddings, allow_dangerous_deserialization=True)
+        _faiss_vectorstore = FAISS.load_local(
+            VECTORSTORE_PATH, embeddings, allow_dangerous_deserialization=True
+        )
         print(f"Vector store loaded from {VECTORSTORE_PATH}")
-        return vs
+        return _faiss_vectorstore
     return None
