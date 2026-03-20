@@ -1,1 +1,1 @@
-This tool is designed solely for answering questions related to the content of your uploaded resume. Please use it to inquire specifically about the details and information contained within your document.
+This tool is specifically designed to answer questions related to the content of the uploaded document titled "AI_ANALYSTCV.pdf." Please use it only to inquire about information contained within this specific document.

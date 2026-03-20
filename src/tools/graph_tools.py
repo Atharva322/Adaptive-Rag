@@ -43,23 +43,17 @@ def doc_tool(state: State) -> Literal["rewrite", "generate"]:
         The next node: "generate" if score is "yes", otherwise "rewrite".
     """
     score = state["binary_score"]
-    print(f"[doc_tool] Routing based on score: {score}")
-    if score == "yes":
+    rewrite_count = state.get("rewrite_count") or 0
+    print(f"[doc_tool] Routing based on score: {score}, rewrite_count: {rewrite_count}")
+
+    # Break the loop: if score is yes OR we've rewritten too many times, generate
+    if score == "yes" or rewrite_count >= 2:
         return "generate"
     else:
         return "rewrite"
 
 
 def verify_answer(state: State) -> Literal["__end__", "generate"]:
-    """
-    Verify whether the final answer is faithful to the retrieved context.
-
-    Args:
-        state (State): The current state of the graph.
-
-    Returns:
-        "__end__" if answer is faithful, otherwise "generate" to retry.
-    """
     if state["route"] == "general":
         return "__end__"
 
@@ -72,7 +66,6 @@ def verify_answer(state: State) -> Literal["__end__", "generate"]:
         input_variables=["question", "context", "final_answer"]
     )
     llm_with_verification = llm.with_structured_output(VerificationResult)
-
     verify_chain = verify_prompt | llm_with_verification
 
     result = verify_chain.invoke({
