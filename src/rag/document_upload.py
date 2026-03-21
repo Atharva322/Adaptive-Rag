@@ -9,7 +9,8 @@ from fastapi import UploadFile, File
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from src.rag.retriever_setup import retriever_chain
+from src.rag.retriever_setup import add_documents_to_store
+
 from src.tools.common_tools import enhance_description_with_llm
 
 
@@ -82,7 +83,8 @@ def documents(description: str, file: UploadFile = File(...)):
     )
     chunks = splitter.split_documents(docs)
 
-    return retriever_chain(chunks)
+    add_documents_to_store(chunks)
+    return {"status": "success", "message": f"Successfully uploaded and processed {len(chunks)} document chunks"}
 
 
 

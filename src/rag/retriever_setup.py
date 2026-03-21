@@ -38,37 +38,6 @@ def _try_load_from_disk():
         print("ℹ No persistent vector store found on disk")
 
 
-def retriever_chain(chunks: list[Document]):
-    """
-    Initialize and store documents in FAISS vector database.
-
-    Args:
-        chunks: List of document chunks to store.
-
-    Returns:
-        Boolean indicating success of the operation.
-    """
-    global _faiss_vectorstore
-
-    try:
-        vectorstore = FAISS.from_documents(
-            documents=chunks,
-            embedding=embeddings
-        )
-
-        _faiss_vectorstore = vectorstore
-
-        # Persist to disk immediately after creating
-        save_vectorstore(vectorstore)
-
-        print("FAISS vector store initialized with documents")
-        print(f"Vectorstore contains {len(chunks)} document chunks")
-        return True
-    except Exception as e:
-        print(f"Error storing documents in FAISS: {e}")
-        return False
-
-
 def get_retriever():
     """
     Get a retriever tool connected to the FAISS vector store.
@@ -147,3 +116,18 @@ def load_vectorstore():
             print(f"⚠ Error loading vector store: {e}")
             return None
     return None
+
+def add_documents_to_store(chunks: list):
+    """Add documents to existing vectorstore without replacing it"""
+    global _faiss_vectorstore
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    
+    if _faiss_vectorstore is None:
+        # Create new if doesn't exist
+        _faiss_vectorstore = FAISS.from_documents(documents=chunks, embedding=embeddings)
+    else:
+        # Append to existing vectorstore
+        _faiss_vectorstore.add_documents(chunks)
+    
+    save_vectorstore(_faiss_vectorstore)
+    return _faiss_vectorstore

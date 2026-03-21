@@ -1,158 +1,103 @@
 """
-API client for communicating with backend services.
+API client for backend communication.
 """
 
-import logging
-import os
-
 import requests
+import streamlit as st
+import json
 
-logger = logging.getLogger(__name__)
+BASE_API_URL = "http://127.0.0.1:8000"
+AUTH_API_URL = "http://localhost:8080/api"
 
-# Backend service URLs
-RUST_BASE_URL = "http://localhost:8080/api"
-PYTHON_BASE_URL = "http://127.0.0.1:8000"
+def get_api_token():
+    """Get API token for authentication."""
+    try:
+        response = requests.get(f"{AUTH_API_URL}/init", timeout=5)
+        return response.json()
+    except Exception as e:
+        st.error(f"Failed to get API token: {str(e)}")
+        return {}
 
-
-def create_user(username: str, password: str, api_token: str) -> bool:
-    """
-    Create a new user account.
-
-    Args:
-        username: Username for the new account.
-        password: Password for the new account.
-        api_token: API token for authentication.
-
-    Returns:
-        True if user creation succeeds, False otherwise.
-    """
-    headers = {
-        "X-API-TOKEN": api_token,
-        "Content-Type": "application/json"
-    }
-    logger.info("API Token received: %s", api_token)
-
+def create_user(email: str, password: str):
+    """Create a new user account."""
     try:
         response = requests.post(
-            f"{RUST_BASE_URL}/create_user",
-            json={"username": username, "password": password},
-            headers=headers,
+            f"{AUTH_API_URL}/signup",
+            json={"email": email, "password": password},
+            timeout=10
         )
-
-        logger.info("Calling /create_user, status code: %s", response.status_code)
-
-        if response.status_code == 200:
-            try:
-                logger.debug("Create user response: %s", response.json())
-            except ValueError:
-                logger.warning("Create user returned non-JSON response")
-            return True
-        else:
-            logger.error(
-                "Create user failed: %s - %s",
-                response.status_code,
-                response.text
-            )
-            return False
-
-    except requests.RequestException as e:
-        logger.exception("Request to /create_user failed: %s", e)
-        return False
-
-
-def login_user(username: str, password: str, api_token: str) -> dict:
-    """
-    Authenticate user login.
-
-    Args:
-        username: Username to log in.
-        password: Password for the user.
-        api_token: API token for authentication.
-
-    Returns:
-        Response dictionary with JWT token if successful, None otherwise.
-    """
-    headers = {
-        "X-API-TOKEN": api_token,
-        "Content-Type": "application/json"
-    }
-    response = requests.post(
-        f"{RUST_BASE_URL}/login",
-        json={"username": username, "password": password},
-        headers=headers,
-    )
-    logger.info("Calling /login, status code: %s", response.json())
-
-    if response.status_code == 200:
         return response.json()
+    except Exception as e:
+        st.error(f"Signup error: {str(e)}")
+        return {"success": False}
 
-    return None
+def login_user(email: str, password: str):
+    """Login user and get JWT token."""
+    try:
+        response = requests.post(
+            f"{AUTH_API_URL}/login",
+            json={"email": email, "password": password},
+            timeout=10
+        )
+        return response.json()
+    except Exception as e:
+        st.error(f"Login error: {str(e)}")
+        return {}
 
-
-def get_api_token() -> str:
-    """
-    Get an API token for authentication.
-
-    Returns:
-        API token string if successful, None otherwise.
-    """
-    response = requests.post(f"{RUST_BASE_URL}/init")
-    logger.info("Calling /init, status code: %s", response.json())
-
-    if response.status_code == 200:
-        return response.json()["api_token"]
-
-    return None
-
-
-def query_backend(query: str, session_id: str) -> str:
-    """
-    Send a query to the RAG backend.
-
-    Args:
-        query: The user's query text.
-        session_id: Session identifier for tracking conversation.
-
-    Returns:
-        Response text from the backend or error message.
-    """
-    url = f"{PYTHON_BASE_URL}/rag/query"
-    print(f"[query_backend] Calling: {url}")
-
-    response = requests.post(
-        url,
-        json={"query": query, "session_id": session_id},
-        allow_redirects=False
-    )
-
-    if response.status_code == 200:
-        return response.json()["result"]["content"]
-    else:
-        return f"Error: {response.status_code} - {response.text}"
-
-
-def document_upload_rag(file, description: str) -> bool:
-    """
-    Upload a document to the RAG system.
-
-    Args:
-        file: File object to upload.
-        description: Description of the document.
-
-    Returns:
-        True if upload succeeds, False otherwise.
-    """
-    headers = {
-        "X-Description": description
-    }
-    url = f"{PYTHON_BASE_URL}/rag/documents/upload"
-
-    if file:
-        files = {"file": (file.name, file, file.type)}
-        response = requests.post(url, files=files, headers=headers)
-        print(response)
-
+def query_backend(query: str, session_id: str):
+    """Send RAG query to backend."""
+    try:
+        response = requests.post(
+            f"{BASE_API_URL}/rag/query",
+            json={
+                "query": query,
+                "session_id": session_id
+            },
+            headers={
+                "accept": "application/json",
+                "Content-Type": "application/json"
+            },
+            timeout=30
+        )
+        
         if response.status_code == 200:
-            return True
+            return response.json()
+        else:
+            st.error(f"Backend error: {response.status_code}")
+            return {}
+            
+    except Exception as e:
+        st.error(f"Query error: {str(e)}")
+        return {}
 
-    return False
+def document_upload_rag(file, description: str, session_id: str):
+    """Upload document to RAG system."""
+    try:
+        files = {
+            'file': (file.name, file.getvalue(), file.type)
+        }
+        
+        response = requests.post(
+            f"{BASE_API_URL}/rag/documents/upload",
+            files=files,
+            headers={
+                "X-Description": description
+            },
+            timeout=60
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            # Return actual error message from backend
+            try:
+                error_detail = response.json().get("detail", response.text)
+            except:
+                error_detail = response.text or f"HTTP {response.status_code}"
+            print(f"Upload error response: {error_detail}")  # Print to terminal too
+            return {"status": "error", "message": error_detail}
+            
+    except Exception as e:
+        error_msg = str(e)
+        print(f"Upload exception: {error_msg}")  # Print to terminal
+        return {"status": "error", "message": error_msg}

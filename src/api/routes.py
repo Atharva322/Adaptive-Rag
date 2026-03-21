@@ -36,4 +36,4 @@ async def upload_file(
     from src.rag.reAct_agent import rebuild_agent
     rebuild_agent()
 
-    return {"status": status_upload}
+    return status_upload
