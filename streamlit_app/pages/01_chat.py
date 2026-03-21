@@ -8,7 +8,8 @@ import json
 from datetime import datetime
 import sys
 sys.path.append("..")
-from utils.api_client import query_backend, document_upload_rag
+from utils.api_client import query_backend, document_upload_rag, BASE_API_URL, delete_document
+
 
 st.set_page_config(
     page_title="Adaptive RAG - Chat",
@@ -20,7 +21,15 @@ st.set_page_config(
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "uploaded_files" not in st.session_state:
-    st.session_state.uploaded_files = []
+    # Load persisted files from backend
+    try:
+        resp = requests.get(f"{BASE_API_URL}/rag/documents")
+        if resp.status_code == 200:
+            st.session_state.uploaded_files = resp.json().get("documents", [])
+        else:
+            st.session_state.uploaded_files = []
+    except:
+        st.session_state.uploaded_files = []
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
@@ -101,11 +110,13 @@ with st.sidebar:
                 st.write(f"**Uploaded:** {file_info['uploaded_at']}")
                 
                 if st.button("🗑️ Delete", key=f"delete_{idx}", use_container_width=True):
-                    # Note: You'll need to add a delete endpoint to your backend
-                    st.session_state.uploaded_files.pop(idx)
-                    st.success("Document removed from session")
-    else:
-        st.info("No documents uploaded yet. Upload a document to get started!")
+                    result = delete_document(file_info["name"])
+                    if result.get("status") == "success":
+                        st.session_state.uploaded_files.pop(idx)
+                        st.success(f"✅ '{file_info['name']}' deleted")
+                        st.rerun()
+                    else:
+                        st.error(f"Delete failed: {result.get('message', 'Unknown error')}")
 
 # Main chat area
 st.subheader("💭 Conversation")

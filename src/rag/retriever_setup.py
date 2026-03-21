@@ -4,6 +4,7 @@ Retriever setup and vector store configuration.
 
 import os
 from pathlib import Path
+import json
 
 from langchain_core.documents import Document
 from langchain_core.tools import create_retriever_tool
@@ -18,6 +19,29 @@ VECTORSTORE_PATH = "./vector_stores/faiss_index"
 
 # Global variable - populated either from disk (on startup) or after upload
 _faiss_vectorstore = None
+
+
+METADATA_PATH = "./vector_stores/documents_metadata.json"
+
+def save_document_metadata(name: str, description: str, doc_ids: list = []):
+    """Append uploaded document metadata to persistent JSON file."""
+    metadata = load_document_metadata()
+    metadata.append({
+        "name": name,
+        "description": description,
+        "uploaded_at": __import__('datetime').datetime.now().isoformat(),
+        "doc_ids": doc_ids
+    })
+    os.makedirs(os.path.dirname(METADATA_PATH), exist_ok=True)
+    with open(METADATA_PATH, "w") as f:
+        json.dump(metadata, f)
+
+def load_document_metadata() -> list:
+    """Load persisted document metadata list."""
+    if os.path.exists(METADATA_PATH):
+        with open(METADATA_PATH, "r") as f:
+            return json.load(f)
+    return []
 
 
 def _try_load_from_disk():
@@ -117,7 +141,7 @@ def load_vectorstore():
             return None
     return None
 
-def add_documents_to_store(chunks: list):
+def add_documents_to_store(chunks: list) -> list:
     """Add documents to existing vectorstore without replacing it"""
     global _faiss_vectorstore
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
@@ -125,9 +149,33 @@ def add_documents_to_store(chunks: list):
     if _faiss_vectorstore is None:
         # Create new if doesn't exist
         _faiss_vectorstore = FAISS.from_documents(documents=chunks, embedding=embeddings)
+        ids = list(_faiss_vectorstore.docstore._dict.keys())
     else:
         # Append to existing vectorstore
-        _faiss_vectorstore.add_documents(chunks)
+        ids = list(_faiss_vectorstore.docstore._dict.keys())
     
     save_vectorstore(_faiss_vectorstore)
-    return _faiss_vectorstore
+    return ids
+
+def delete_document_from_store(name: str) -> bool:
+    """Remove a document from vectorstore and metadata by filename."""
+    global _faiss_vectorstore
+    metadata = load_document_metadata()
+    
+    # Find the entry
+    entry = next((m for m in metadata if m["name"] == name), None)
+    if not entry:
+        return False
+    
+    # Delete from FAISS vectorstore if IDs stored
+    doc_ids = entry.get("doc_ids", [])
+    if _faiss_vectorstore and doc_ids:
+        _faiss_vectorstore.delete(doc_ids)
+        save_vectorstore(_faiss_vectorstore)
+    
+    # Remove from metadata
+    metadata = [m for m in metadata if m["name"] != name]
+    with open(METADATA_PATH, "w") as f:
+        json.dump(metadata, f)
+    
+    return True

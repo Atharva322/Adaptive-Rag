@@ -101,3 +101,16 @@ def document_upload_rag(file, description: str, session_id: str):
         error_msg = str(e)
         print(f"Upload exception: {error_msg}")  # Print to terminal
         return {"status": "error", "message": error_msg}
+    
+def delete_document(document_name: str):
+    """Delete a document from the RAG system."""
+    try:
+        response = requests.delete(
+            f"{BASE_API_URL}/rag/documents/{document_name}",
+            timeout=30
+        )
+        if response.status_code == 200:
+            return response.json()
+        return {"status": "error", "message": f"HTTP {response.status_code}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
