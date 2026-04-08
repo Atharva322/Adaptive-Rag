@@ -15,9 +15,8 @@ python-dotenv~=1.1.1
 PyYAML~=6.0.2
 fastapi
 uvicorn
-aiosqlite
+asyncpg
 streamlit
-requests
 langchain-qdrant
 python-multipart
 pypdf
