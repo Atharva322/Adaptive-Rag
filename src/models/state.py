@@ -15,4 +15,8 @@ class State(TypedDict):
     binary_score: Optional[str]
     route: Optional[str]
     latest_query: Optional[str]
+<<<<<<< HEAD
     rewrite_count: Optional[int]
+=======
+    rewrite_count: Optional[int]
+>>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e

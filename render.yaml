@@ -1,0 +1,39 @@
+services:
+  # FastAPI Backend
+  - type: web
+    name: adaptive-rag-backend
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: SQLITE_DB_PATH
+        value: /var/data/adaptive_rag.db
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+
+  # Streamlit Frontend
+  - type: web
+    name: adaptive-rag-frontend
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run streamlit_app/app.py --server.port $PORT --server.address 0.0.0.0
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: BACKEND_URL
+        fromService:
+          type: web
+          name: adaptive-rag-backend
+          property: host

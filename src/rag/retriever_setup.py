@@ -4,7 +4,10 @@ Retriever setup and vector store configuration.
 
 import os
 from pathlib import Path
+<<<<<<< HEAD
 import json
+=======
+>>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e
 
 from langchain_core.documents import Document
 from langchain_core.tools import create_retriever_tool
@@ -21,7 +24,35 @@ VECTORSTORE_PATH = "./vector_stores/faiss_index"
 _faiss_vectorstore = None
 
 
+<<<<<<< HEAD
 METADATA_PATH = "./vector_stores/documents_metadata.json"
+=======
+def _try_load_from_disk():
+    """Attempt to load vectorstore from disk at module import time."""
+    global _faiss_vectorstore
+    if os.path.exists(VECTORSTORE_PATH):
+        try:
+            _faiss_vectorstore = FAISS.load_local(
+                folder_path=VECTORSTORE_PATH, 
+                embeddings=embeddings, 
+                allow_dangerous_deserialization=True
+            )
+            print(f"✓ Vector store loaded from disk: {VECTORSTORE_PATH}")
+        except Exception as e:
+            print(f"⚠ Could not load vector store from disk: {e}")
+            _faiss_vectorstore = None
+    else:
+        print("ℹ No persistent vector store found on disk")
+
+
+# Try to load from disk immediately when module is imported
+_try_load_from_disk()
+
+
+def retriever_chain(chunks: list[Document]):
+    """
+    Initialize and store documents in FAISS vector database.
+>>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e
 
 def save_document_metadata(name: str, description: str, doc_ids: list = []):
     """Append uploaded document metadata to persistent JSON file."""
@@ -47,6 +78,7 @@ def load_document_metadata() -> list:
 def _try_load_from_disk():
     """Attempt to load vectorstore from disk."""
     global _faiss_vectorstore
+<<<<<<< HEAD
     if os.path.exists(VECTORSTORE_PATH):
         try:
             _faiss_vectorstore = FAISS.load_local(
@@ -60,6 +92,26 @@ def _try_load_from_disk():
             _faiss_vectorstore = None
     else:
         print("ℹ No persistent vector store found on disk")
+=======
+
+    try:
+        vectorstore = FAISS.from_documents(
+            documents=chunks,
+            embedding=embeddings
+        )
+
+        _faiss_vectorstore = vectorstore
+
+        # Persist to disk immediately after creating
+        save_vectorstore(vectorstore)
+
+        print("FAISS vector store initialized with documents")
+        print(f"Vectorstore contains {len(chunks)} document chunks")
+        return True
+    except Exception as e:
+        print(f"Error storing documents in FAISS: {e}")
+        return False
+>>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e
 
 
 def get_retriever():
@@ -140,6 +192,7 @@ def load_vectorstore():
             print(f"⚠ Error loading vector store: {e}")
             return None
     return None
+<<<<<<< HEAD
 
 def add_documents_to_store(chunks: list) -> list:
     """Add documents to existing vectorstore without replacing it"""
@@ -179,3 +232,5 @@ def delete_document_from_store(name: str) -> bool:
         json.dump(metadata, f)
     
     return True
+=======
+>>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e

@@ -44,6 +44,7 @@ async def upload_file(
     from src.rag.reAct_agent import rebuild_agent
     rebuild_agent()
 
+<<<<<<< HEAD
     return status_upload
 
 @router.delete("/rag/documents/{document_name}")
@@ -54,3 +55,6 @@ async def delete_document(document_name: str):
         rebuild_agent()
         return {"status": "success", "message": f"Document '{document_name}' deleted"}
     return {"status": "error", "message": f"Document '{document_name}' not found"}
+=======
+    return {"status": status_upload}
+>>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e

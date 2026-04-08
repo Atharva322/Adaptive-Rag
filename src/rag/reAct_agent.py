@@ -2,6 +2,7 @@
 ReAct agent setup for document retrieval and question answering.
 """
 
+<<<<<<< HEAD
 import os
 from src.config.settings import Config
 
@@ -9,6 +10,8 @@ from src.config.settings import Config
 ReAct agent setup for document retrieval and question answering.
 """
 
+=======
+>>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e
 from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -45,4 +48,8 @@ def rebuild_agent():
     """Rebuild the agent with the latest vectorstore after a document upload."""
     global tools, react_agent, agent_executor
     tools, react_agent, agent_executor = _build_agent()
+<<<<<<< HEAD
     print("Agent rebuilt with updated vectorstore")
+=======
+    print("Agent rebuilt with updated vectorstore")
+>>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e

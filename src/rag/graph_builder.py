@@ -20,7 +20,6 @@ from src.tools.graph_tools import routing_tool, doc_tool
 config = Config()
 
 
-# Node implementations
 def query_classifier(state: State):
     """
     Classify the query to determine if it's related to indexed documents.
@@ -105,7 +104,6 @@ def grade(state: State):
     question = state["latest_query"]
 
     llm_with_grade = llm.with_structured_output(Grade)
-
     chain_graded = grading_prompt | llm_with_grade
     result = chain_graded.invoke({"question": question, "context": context})
 
@@ -114,8 +112,22 @@ def grade(state: State):
 
 
 def rewrite_query(state: State):
+<<<<<<< HEAD
     query = state["latest_query"]
     rewrite_count = (state.get("rewrite_count") or 0) + 1  # increment counter
+=======
+    """
+    Rewrite the query to get better retrieval results.
+
+    Args:
+        state (State): State of the question.
+
+    Returns:
+        dict: Updated latest_query and incremented rewrite_count.
+    """
+    query = state["latest_query"]
+    rewrite_count = (state.get("rewrite_count") or 0) + 1
+>>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e
     rewrite_prompt = PromptTemplate(
         template=config.prompt("rewrite_prompt"),
         input_variables=["query"]
@@ -125,7 +137,11 @@ def rewrite_query(state: State):
     print(result)
     return {
         "latest_query": result.content,
+<<<<<<< HEAD
         "rewrite_count": rewrite_count  # persist counter in state
+=======
+        "rewrite_count": rewrite_count
+>>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e
     }
 
 def generate(state: State):
@@ -161,15 +177,10 @@ def web_search(state: State):
     Returns:
         dict: Search results as messages.
     """
-    # Initialize the Tavily tool
     search_tool = TavilySearchResults()
-
-    # Search a query
     result = search_tool.invoke(state["latest_query"])
-
     contents = [item["content"] for item in result if "content" in item]
     print(contents)
-
     return {
         "messages": [{"role": "assistant", "content": "\n\n".join(contents)}]
     }
@@ -196,4 +207,3 @@ graph.add_edge("generate", END)
 graph.add_edge("general_llm", END)
 
 builder = graph.compile()
-

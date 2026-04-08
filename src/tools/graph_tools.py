@@ -40,7 +40,7 @@ def doc_tool(state: State) -> Literal["rewrite", "generate"]:
         state (State): The current state of the graph.
 
     Returns:
-        The next node: "generate" if score is "yes", otherwise "rewrite".
+        The next node: "generate" if score is "yes" or rewrite limit reached, otherwise "rewrite".
     """
     score = state["binary_score"]
     rewrite_count = state.get("rewrite_count") or 0
