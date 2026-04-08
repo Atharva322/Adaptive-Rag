@@ -5,7 +5,7 @@ API routes for RAG operations.
 from fastapi import APIRouter, UploadFile, File, Header
 from langchain_core.messages import HumanMessage
 
-from src.memory.chat_history_mongo import ChatHistory
+from src.memory.chat_history_postgres import ChatHistory
 from src.models.query_request import QueryRequest
 from src.rag.document_upload import documents
 from src.rag.graph_builder import builder
