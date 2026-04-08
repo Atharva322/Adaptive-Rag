@@ -15,11 +15,7 @@ services:
       - key: TAVILY_API_KEY
         sync: false
       - key: SQLITE_DB_PATH
-        value: /var/data/adaptive_rag.db
-    disk:
-      name: data
-      mountPath: /var/data
-      sizeGB: 1
+        value: /tmp/adaptive_rag.db
 
   # Streamlit Frontend
   - type: web
