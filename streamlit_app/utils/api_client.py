@@ -6,8 +6,16 @@ import requests
 import streamlit as st
 import json
 
-BASE_API_URL = "http://127.0.0.1:8000"
-AUTH_API_URL = "http://localhost:8080/api"
+import os
+
+# Use environment variable for backend URL (Render) or default to localhost
+BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+# Add https:// prefix if it's a Render URL without protocol
+if BACKEND_URL and not BACKEND_URL.startswith("http"):
+    BACKEND_URL = f"https://{BACKEND_URL}"
+
+BASE_API_URL = BACKEND_URL
+AUTH_API_URL = f"{BACKEND_URL}/api"
 
 def get_api_token():
     """Get API token for authentication."""

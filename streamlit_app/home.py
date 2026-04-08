@@ -56,7 +56,7 @@ if submit:
         st.error("Username and password required.")
     else:
         if mode == "Create Account":
-            success = create_user(username, password, st.session_state["session_id"])
+            success = create_user(username, password)
             if success:
                 st.success("User created. Please log in.")
             else:
