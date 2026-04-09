@@ -1,7 +1,7 @@
 """
 Main FastAPI application entry point.
 """
-
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from src.api.routes import router
@@ -34,6 +34,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Adaptive RAG API", lifespan=lifespan)
 app.include_router(router)
 app.state.description_ = ""
+# Allow CORS for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins for now
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():
