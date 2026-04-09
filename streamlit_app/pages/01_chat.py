@@ -5,6 +5,7 @@ Main chat interface with RAG capabilities and source document display.
 import streamlit as st
 import requests
 import json
+import uuid
 from datetime import datetime
 import sys
 sys.path.append("..")
@@ -18,11 +19,16 @@ st.set_page_config(
 )
 
 # Initialize session state
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "uploaded_files" not in st.session_state:
+    st.session_state.uploaded_files = []
+if "last_uploaded_doc" not in st.session_state:
+    st.session_state.last_uploaded_doc = None
 if "chat_loaded" not in st.session_state:
     try:
-        # Call backend to get chat history
         resp = requests.get(
             f"{BASE_API_URL}/rag/chat_history",
             params={"session_id": st.session_state.session_id}
@@ -32,57 +38,57 @@ if "chat_loaded" not in st.session_state:
             st.session_state.messages = history
         st.session_state.chat_loaded = True
     except:
-        pass  # Start with empty chat if loading fails
-if "session_id" not in st.session_state:
-    st.session_state.session_id = None
+        st.session_state.chat_loaded = True
 
 # Check authentication
 if "jwt_token" not in st.session_state or st.session_state.jwt_token is None:
-    st.warning("⚠️ Please log in first")
+    st.warning("Please log in first")
     st.stop()
-
-# Generate session ID if not exists
-if not st.session_state.session_id:
-    import uuid
-    st.session_state.session_id = str(uuid.uuid4())
 
 # Header
 col1, col2 = st.columns([0.9, 0.1])
 with col1:
-    st.title("💬 Adaptive RAG Chat")
+    st.title("Adaptive RAG Chat")
     st.markdown("Ask questions about your uploaded documents")
 
 with col2:
-    if st.button("🚪 Logout"):
+    if st.button("Logout"):
         st.session_state.jwt_token = None
         st.session_state.session_id = None
         st.rerun()
 
 # Sidebar - Document Management
 with st.sidebar:
-    st.header("📄 Document Management")
-    
-    # Add refresh button
-    if st.button("🔄 Refresh Documents", use_container_width=True):
+    st.header("Document Management")
+
+    # File uploader
+    uploaded_file = st.file_uploader(
+        "Upload a document",
+        type=["pdf", "txt", "docx", "md"],
+        help="Upload a document to query against"
+    )
+
+    # Refresh documents
+    if st.button("Refresh Documents", use_container_width=True):
         try:
             resp = requests.get(f"{BASE_API_URL}/rag/documents")
             if resp.status_code == 200:
                 st.session_state.uploaded_files = resp.json().get("documents", [])
-                st.success("✅ Documents refreshed!")
+                st.success("Documents refreshed!")
             else:
                 st.error("Failed to load documents")
         except Exception as e:
             st.error(f"Error: {str(e)}")
         st.rerun()
-    
+
     if uploaded_file:
         doc_description = st.text_area(
             "Document Description",
             placeholder="Briefly describe what this document contains...",
             height=80
         )
-        
-        if st.button("📤 Upload Document", use_container_width=True):
+
+        if st.button("Upload Document", use_container_width=True):
             if not doc_description:
                 st.error("Please provide a description for the document")
             else:
@@ -93,72 +99,67 @@ with st.sidebar:
                             description=doc_description,
                             session_id=st.session_state.session_id
                         )
-                        
+
                         if result.get("status") == "success":
                             st.session_state.uploaded_files.append({
                                 "name": uploaded_file.name,
                                 "description": doc_description,
                                 "uploaded_at": datetime.now().isoformat()
                             })
-                            # Track latest uploaded document
                             st.session_state.last_uploaded_doc = {
                                 "name": uploaded_file.name,
                                 "description": doc_description
                             }
-                            st.success(f"✅ {uploaded_file.name} uploaded successfully!")
+                            st.success(f"{uploaded_file.name} uploaded successfully!")
                             st.rerun()
-                            st.info(f"📊 Created {result.get('chunks', 0)} document chunks for retrieval")
                         else:
                             st.error(f"Upload failed: {result.get('message', 'Unknown error')}")
                     except Exception as e:
                         st.error(f"Error uploading document: {str(e)}")
-    
+
     # Uploaded files list
     if st.session_state.uploaded_files:
         st.divider()
-        st.subheader("✅ Uploaded Documents")
+        st.subheader("Uploaded Documents")
         for idx, file_info in enumerate(st.session_state.uploaded_files):
-            with st.expander(f"📄 {file_info['name']}"):
+            with st.expander(f"{file_info['name']}"):
                 st.write(f"**Description:** {file_info['description']}")
                 st.write(f"**Uploaded:** {file_info['uploaded_at']}")
-                
-                if st.button("🗑️ Delete", key=f"delete_{idx}", use_container_width=True):
+
+                if st.button("Delete", key=f"delete_{idx}", use_container_width=True):
                     result = delete_document(file_info["name"])
                     if result.get("status") == "success":
                         st.session_state.uploaded_files.pop(idx)
-                        st.success(f"✅ '{file_info['name']}' deleted")
+                        st.success(f"'{file_info['name']}' deleted")
                         st.rerun()
                     else:
                         st.error(f"Delete failed: {result.get('message', 'Unknown error')}")
 
 # Main chat area
-st.subheader("💭 Conversation")
+st.subheader("Conversation")
 
 # Display chat history
 for message in st.session_state.messages:
     if message["role"] == "user":
-        with st.chat_message("user", avatar="👤"):
+        with st.chat_message("user"):
             st.write(message["content"])
     else:
-        with st.chat_message("assistant", avatar="🤖"):
+        with st.chat_message("assistant"):
             st.write(message["content"])
-            
-            # Display sources if available
+
             if "sources" in message and message["sources"]:
-                with st.expander("📚 Sources", expanded=False):
+                with st.expander("Sources", expanded=False):
                     cols = st.columns(len(message["sources"]))
                     for idx, source in enumerate(message["sources"]):
                         with cols[idx]:
-                            st.info(f"📄 {source}")
-            
-            # Display metadata if available
+                            st.info(f"{source}")
+
             if "metadata" in message:
                 meta = message["metadata"]
                 col1, col2 = st.columns(2)
                 with col1:
                     if "confidence" in meta:
-                        confidence = meta["confidence"]
-                        st.metric("Confidence", f"{confidence*100:.0f}%")
+                        st.metric("Confidence", f"{meta['confidence']*100:.0f}%")
                 with col2:
                     if "processing_time" in meta:
                         st.metric("Processing Time", f"{meta['processing_time']:.2f}s")
@@ -171,36 +172,30 @@ user_input = st.chat_input(
 )
 
 if user_input:
-    # Add document context if user references "this document"/"this paper"
     contextual_keywords = ["this document", "this paper", "the document", "the paper", "it"]
     query_lower = user_input.lower()
-    
+
     if any(keyword in query_lower for keyword in contextual_keywords) and st.session_state.last_uploaded_doc:
-        # Add context
         enhanced_query = f"{user_input}\n\nContext: Referring to the document '{st.session_state.last_uploaded_doc['name']}' which is about: {st.session_state.last_uploaded_doc['description']}"
     else:
         enhanced_query = user_input
-    
-    # Add user message to history (show original)
+
     st.session_state.messages.append({
         "role": "user",
-        "content": user_input  # Show original, not enhanced
+        "content": user_input
     })
-    
-    # Display user message immediately
-    with st.chat_message("user", avatar="👤"):
+
+    with st.chat_message("user"):
         st.write(user_input)
-    
-    # Query backend
-    with st.chat_message("assistant", avatar="🤖"):
-        with st.spinner("🔍 Searching documents and generating answer..."):
+
+    with st.chat_message("assistant"):
+        with st.spinner("Searching documents and generating answer..."):
             try:
                 result = query_backend(
                     query=enhanced_query,
                     session_id=st.session_state.session_id
                 )
-                
-                # Handle different response formats
+
                 if isinstance(result, dict):
                     answer = result.get("messages", [{}])[-1].get("content", "No answer generated")
                     sources = result.get("messages", [{}])[-1].get("sources", [])
@@ -211,37 +206,35 @@ if user_input:
                     sources = []
                     confidence = None
                     route = None
-                
-                # Display answer
+
                 st.write(answer)
-                
-                # Store in history with metadata
+
                 message_data = {
                     "role": "assistant",
                     "content": answer,
                 }
-                
+
                 if sources:
                     message_data["sources"] = sources
-                    with st.expander("📚 Sources", expanded=False):
+                    with st.expander("Sources", expanded=False):
                         for source in sources:
-                            st.info(f"📄 {source}")
-                
+                            st.info(f"{source}")
+
                 if confidence or route:
                     message_data["metadata"] = {}
                     if confidence:
-                        message_data["metadata"]["confidence"] = 0.95  # Default
+                        message_data["metadata"]["confidence"] = 0.95
                         st.metric("Match Quality", f"{confidence}")
                     if route:
                         st.caption(f"Query routed to: {route}")
-                
+
                 st.session_state.messages.append(message_data)
-                
+
             except Exception as e:
-                st.error(f"⚠️ Error querying backend: {str(e)}")
-                st.session_state.messages.pop()  # Remove failed user message
+                st.error(f"Error querying backend: {str(e)}")
+                st.session_state.messages.pop()
 
 # Footer
 st.divider()
-st.caption("💡 Tip: Be specific in your questions for better results. Example: 'What are the key technical skills mentioned in the documents?'")
+st.caption("Tip: Be specific in your questions for better results.")
 st.caption(f"Session ID: `{st.session_state.session_id[:8]}...`")
