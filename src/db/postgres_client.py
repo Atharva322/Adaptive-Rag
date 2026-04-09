@@ -1,6 +1,9 @@
 import asyncpg
 import os
 from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Database pool
 _pool: Optional[asyncpg.Pool] = None
