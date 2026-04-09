@@ -7,6 +7,17 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
+# At the top after imports
+if "uploaded_files" not in st.session_state:
+    try:
+        resp = requests.get(f"{BASE_API_URL}/rag/documents")
+        if resp.status_code == 200:
+            st.session_state.uploaded_files = resp.json().get("documents", [])
+        else:
+            st.session_state.uploaded_files = []
+    except:
+        st.session_state.uploaded_files = []
+
 st.set_page_config(
     page_title="Documents - Adaptive RAG",
     page_icon="📚",

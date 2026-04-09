@@ -24,11 +24,40 @@ async def list_documents():
 async def rag_query(req: QueryRequest):
     """Process a RAG query and return the result."""
     chat_history = ChatHistory.get_session_history(req.session_id)
+    
+    # Save user message
+    chat_history.add_user_message(req.query)
+    
     result = builder.invoke(
         {"messages": [HumanMessage(content=req.query)]},
         config={"recursion_limit": 50}
     )
+    
+    # Save assistant response
+    if result.get("messages"):
+        last_message = result["messages"][-1]
+        if hasattr(last_message, 'content'):
+            chat_history.add_ai_message(last_message.content)
+        elif isinstance(last_message, dict):
+            chat_history.add_ai_message(last_message.get("content", ""))
+    
     return result
+
+@router.get("/rag/chat_history")
+async def get_chat_history(session_id: str):
+    """Retrieve chat history for a session."""
+    chat_history = ChatHistory.get_session_history(session_id)
+    messages = chat_history.get_messages()
+    
+    # Convert to dict format
+    history = []
+    for msg in messages:
+        history.append({
+            "role": "user" if msg.type == "human" else "assistant",
+            "content": msg.content
+        })
+    
+    return {"messages": history}
 
 
 @router.post("/rag/documents/upload")

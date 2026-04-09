@@ -20,16 +20,19 @@ st.set_page_config(
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "uploaded_files" not in st.session_state:
-    # Load persisted files from backend
+if "chat_loaded" not in st.session_state:
     try:
-        resp = requests.get(f"{BASE_API_URL}/rag/documents")
+        # Call backend to get chat history
+        resp = requests.get(
+            f"{BASE_API_URL}/rag/chat_history",
+            params={"session_id": st.session_state.session_id}
+        )
         if resp.status_code == 200:
-            st.session_state.uploaded_files = resp.json().get("documents", [])
-        else:
-            st.session_state.uploaded_files = []
+            history = resp.json().get("messages", [])
+            st.session_state.messages = history
+        st.session_state.chat_loaded = True
     except:
-        st.session_state.uploaded_files = []
+        pass  # Start with empty chat if loading fails
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
@@ -59,13 +62,18 @@ with col2:
 with st.sidebar:
     st.header("📄 Document Management")
     
-    # File upload section
-    st.subheader("Upload Document")
-    uploaded_file = st.file_uploader(
-        "Choose a file (PDF or TXT)",
-        type=["pdf", "txt"],
-        key=f"file_uploader_{len(st.session_state.uploaded_files)}"
-    )
+    # Add refresh button
+    if st.button("🔄 Refresh Documents", use_container_width=True):
+        try:
+            resp = requests.get(f"{BASE_API_URL}/rag/documents")
+            if resp.status_code == 200:
+                st.session_state.uploaded_files = resp.json().get("documents", [])
+                st.success("✅ Documents refreshed!")
+            else:
+                st.error("Failed to load documents")
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+        st.rerun()
     
     if uploaded_file:
         doc_description = st.text_area(
@@ -92,6 +100,11 @@ with st.sidebar:
                                 "description": doc_description,
                                 "uploaded_at": datetime.now().isoformat()
                             })
+                            # Track latest uploaded document
+                            st.session_state.last_uploaded_doc = {
+                                "name": uploaded_file.name,
+                                "description": doc_description
+                            }
                             st.success(f"✅ {uploaded_file.name} uploaded successfully!")
                             st.rerun()
                             st.info(f"📊 Created {result.get('chunks', 0)} document chunks for retrieval")
@@ -158,10 +171,20 @@ user_input = st.chat_input(
 )
 
 if user_input:
-    # Add user message to history
+    # Add document context if user references "this document"/"this paper"
+    contextual_keywords = ["this document", "this paper", "the document", "the paper", "it"]
+    query_lower = user_input.lower()
+    
+    if any(keyword in query_lower for keyword in contextual_keywords) and st.session_state.last_uploaded_doc:
+        # Add context
+        enhanced_query = f"{user_input}\n\nContext: Referring to the document '{st.session_state.last_uploaded_doc['name']}' which is about: {st.session_state.last_uploaded_doc['description']}"
+    else:
+        enhanced_query = user_input
+    
+    # Add user message to history (show original)
     st.session_state.messages.append({
         "role": "user",
-        "content": user_input
+        "content": user_input  # Show original, not enhanced
     })
     
     # Display user message immediately
@@ -173,7 +196,7 @@ if user_input:
         with st.spinner("🔍 Searching documents and generating answer..."):
             try:
                 result = query_backend(
-                    query=user_input,
+                    query=enhanced_query,
                     session_id=st.session_state.session_id
                 )
                 
