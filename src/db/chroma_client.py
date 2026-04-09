@@ -1,34 +1,24 @@
 """
-ChromaDB client configuration.
+ChromaDB client for Railway-hosted server.
 """
 
 import chromadb
-from chromadb.config import Settings
 import os
 
-# Persistent storage path
-PERSIST_DIRECTORY = "./vector_stores/chroma"
-
 def get_chroma_client():
-    """
-    Get a persistent ChromaDB client.
+    """Get ChromaDB client connected to Railway server."""
     
-    Returns:
-        chromadb.Client: Configured ChromaDB client with persistent storage.
-    """
-    os.makedirs(PERSIST_DIRECTORY, exist_ok=True)
+    host = os.getenv('CHROMA_HOST', 'localhost')
+    port = int(os.getenv('CHROMA_PORT', '8000'))
     
-    client = chromadb.PersistentClient(
-        path=PERSIST_DIRECTORY,
-        settings=Settings(
-            anonymized_telemetry=False,
-            allow_reset=True
-        )
+    client = chromadb.HttpClient(
+        host=host,
+        port=port,
+        ssl=True  # Railway uses HTTPS
     )
     
     return client
 
-# Global client instance
 _chroma_client = None
 
 def initialize_chroma():
@@ -36,5 +26,5 @@ def initialize_chroma():
     global _chroma_client
     if _chroma_client is None:
         _chroma_client = get_chroma_client()
-        print(f"✓ ChromaDB initialized at {PERSIST_DIRECTORY}")
+        print(f"✓ Connected to ChromaDB at {os.getenv('CHROMA_HOST')}")
     return _chroma_client
