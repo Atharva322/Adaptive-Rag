@@ -10,11 +10,12 @@ def get_chroma_client():
     
     host = os.getenv('CHROMA_HOST', 'localhost')
     port = int(os.getenv('CHROMA_PORT', '8000'))
+    use_ssl = os.getenv('CHROMA_USE_SSL', 'false').lower() == 'true'
     
     client = chromadb.HttpClient(
         host=host,
         port=port,
-        ssl=True  # Railway uses HTTPS
+        ssl=use_ssl
     )
     
     return client
