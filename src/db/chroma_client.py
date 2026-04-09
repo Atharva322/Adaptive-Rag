@@ -12,6 +12,16 @@ def get_chroma_client():
     port = int(os.getenv('CHROMA_PORT', '8000'))
     use_ssl = os.getenv('CHROMA_USE_SSL', 'false').lower() == 'true'
     
+    # DEBUG LOGGING - REMOVE AFTER TESTING
+    print(f"🔍 DEBUG ChromaDB Config:")
+    print(f"   CHROMA_HOST env var: {os.getenv('CHROMA_HOST')}")  
+    print(f"   CHROMA_PORT env var: {os.getenv('CHROMA_PORT')}")
+    print(f"   CHROMA_USE_SSL env var: {os.getenv('CHROMA_USE_SSL')}")
+    print(f"   Resolved host: {host}")
+    print(f"   Resolved port: {port}")
+    print(f"   Resolved SSL: {use_ssl}")
+    # END DEBUG
+    
     client = chromadb.HttpClient(
         host=host,
         port=port,
