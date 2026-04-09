@@ -15,20 +15,25 @@ import os
 async def lifespan(app: FastAPI):
     # Startup
     print("Initializing PostgreSQL database...")
-    await init_db()
-    print(f"✓ PostgreSQL database initialized")
-    
-        # In the lifespan function, replace FAISS loading with:
+    try:
+        await init_db()
+        print("✓ PostgreSQL database initialized")
+    except Exception as e:
+        print(f"WARNING: PostgreSQL initialization failed: {e}. Chat history features will be unavailable.")
+
     print("Loading vectorstore from disk...")
-    _try_load_from_disk()
-    vectorstore = load_vectorstore()
-    
-    print("Rebuilding agent with loaded vectorstore...")
-    rebuild_agent()
-    print("✓ Agent rebuilt")
-    
+    try:
+        _try_load_from_disk()
+        vectorstore = load_vectorstore()
+
+        print("Rebuilding agent with loaded vectorstore...")
+        rebuild_agent()
+        print("✓ Agent rebuilt")
+    except Exception as e:
+        print(f"WARNING: Agent initialization failed: {e}. RAG features may be unavailable.")
+
     yield
-    
+
     # Shutdown
     await close_db()
     print("✓ Database connections closed")
