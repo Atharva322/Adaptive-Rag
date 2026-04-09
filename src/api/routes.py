@@ -9,7 +9,6 @@ from src.memory.chat_history_postgres import ChatHistory
 from src.models.query_request import QueryRequest
 from src.rag.document_upload import documents
 from src.rag.graph_builder import builder
-from src.rag.retriever_setup import load_document_metadata
 from src.rag.retriever_setup import load_document_metadata, delete_document_from_store
 from src.rag.reAct_agent import rebuild_agent
 
@@ -41,11 +40,10 @@ async def upload_file(
     status_upload = documents(description, file)
 
     # Rebuild the agent so it uses the newly uploaded document
-    from src.rag.reAct_agent import rebuild_agent
     rebuild_agent()
-
-<<<<<<< HEAD
+    
     return status_upload
+
 
 @router.delete("/rag/documents/{document_name}")
 async def delete_document(document_name: str):
@@ -55,6 +53,3 @@ async def delete_document(document_name: str):
         rebuild_agent()
         return {"status": "success", "message": f"Document '{document_name}' deleted"}
     return {"status": "error", "message": f"Document '{document_name}' not found"}
-=======
-    return {"status": status_upload}
->>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e
