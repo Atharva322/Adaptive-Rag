@@ -104,9 +104,8 @@ def get_retriever():
         retriever_tool = create_retriever_tool(
             retriever,
             "retriever_customer_uploaded_documents",
-            f"Use this tool **only** to answer questions about: {description}\n"
-            "Don't use this tool to answer anything else."
-        )
+            "Search through customer uploaded documents. Use this tool to answer questions about any topics covered in the uploaded documents, including technical concepts, algorithms, and specific subjects."
+)
 
         return retriever_tool
 
