@@ -21,3 +21,4 @@ streamlit
 langchain-qdrant
 python-multipart
 pypdf
+numpy<2.0
