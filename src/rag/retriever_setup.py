@@ -117,7 +117,14 @@ def get_retriever():
 
     except Exception as e:
         print(f"Error initializing retriever: {e}")
-        raise Exception(e)
+        from langchain.tools import Tool
+        def _dummy_retriever(query: str) -> str:
+            return "Document retrieval is temporarily unavailable. ChromaDB connection failed - please check CHROMA_HOST, CHROMA_PORT, CHROMA_USE_SSL environment variables."
+        return Tool(
+            name="retriever_customer_uploaded_documents",
+            description="Search through uploaded documents.",
+            func=_dummy_retriever
+        )
 
 
 def load_vectorstore():
