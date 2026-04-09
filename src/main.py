@@ -1,6 +1,7 @@
 """
 Main FastAPI application entry point.
 """
+from src.rag.retriever_setup import _try_load_from_disk, load_vectorstore
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
@@ -17,9 +18,10 @@ async def lifespan(app: FastAPI):
     await init_db()
     print(f"✓ PostgreSQL database initialized")
     
+        # In the lifespan function, replace FAISS loading with:
     print("Loading vectorstore from disk...")
-    load_vectorstore()
-    print("✓ Vector store loaded")
+    _try_load_from_disk()
+    vectorstore = load_vectorstore()
     
     print("Rebuilding agent with loaded vectorstore...")
     rebuild_agent()

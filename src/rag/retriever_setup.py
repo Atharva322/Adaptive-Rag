@@ -1,26 +1,26 @@
 """
-Retriever setup and vector store configuration.
+Retriever setup and vector store configuration with ChromaDB.
 """
 
 import os
 from pathlib import Path
 import json
 
-
 from langchain_core.documents import Document
 from langchain_core.tools import create_retriever_tool
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
+from langchain_chroma import Chroma
 
+from src.db.chroma_client import initialize_chroma
 from src.core.config import settings
 
 embeddings = OpenAIEmbeddings()
 
-VECTORSTORE_PATH = "./vector_stores/faiss_index"
+# ChromaDB collection name
+COLLECTION_NAME = "adaptive_rag_documents"
 
 # Global variable - populated either from disk (on startup) or after upload
-_faiss_vectorstore = None
-
+_chroma_vectorstore = None
 
 METADATA_PATH = "./vector_stores/documents_metadata.json"
 
@@ -46,66 +46,72 @@ def load_document_metadata() -> list:
 
 
 def _try_load_from_disk():
-    """Attempt to load vectorstore from disk."""
-    global _faiss_vectorstore
-    if os.path.exists(VECTORSTORE_PATH):
-        try:
-            _faiss_vectorstore = FAISS.load_local(
-                folder_path=VECTORSTORE_PATH, 
-                embeddings=embeddings, 
-                allow_dangerous_deserialization=True
-            )
-            print(f"✓ Vector store loaded from disk: {VECTORSTORE_PATH}")
-        except Exception as e:
-            print(f"⚠ Could not load vector store from disk: {e}")
-            _faiss_vectorstore = None
-    else:
-        print("ℹ No persistent vector store found on disk")
+    """Attempt to load vectorstore from ChromaDB."""
+    global _chroma_vectorstore
+    try:
+        chroma_client = initialize_chroma()
+        _chroma_vectorstore = Chroma(
+            client=chroma_client,
+            collection_name=COLLECTION_NAME,
+            embedding_function=embeddings
+        )
+        
+        # Check if collection has documents
+        collection = chroma_client.get_collection(COLLECTION_NAME)
+        count = collection.count()
+        
+        if count > 0:
+            print(f"✓ ChromaDB loaded with {count} documents")
+        else:
+            print("ℹ ChromaDB collection exists but is empty")
+            
+    except Exception as e:
+        print(f"⚠ Could not load ChromaDB collection: {e}")
+        _chroma_vectorstore = None
 
 
 def get_retriever():
     """
-    Get a retriever tool connected to the FAISS vector store.
-
-    Returns the retriever tool that can search documents stored by retriever_chain().
-    If no documents have been uploaded yet, creates a retriever with a dummy document.
+    Get a retriever tool connected to the ChromaDB vector store.
 
     Returns:
         A LangChain retriever tool configured for the vector store.
-
-    Raises:
-        Exception: If vector store initialization fails.
     """
-    global _faiss_vectorstore
+    global _chroma_vectorstore
 
     try:
-        if _faiss_vectorstore is not None:
-            retriever = _faiss_vectorstore.as_retriever()
-            print("Using existing FAISS vectorstore with uploaded documents")
+        if _chroma_vectorstore is not None:
+            retriever = _chroma_vectorstore.as_retriever(search_kwargs={"k": 4})
+            print("Using existing ChromaDB vectorstore with uploaded documents")
         else:
-            print("No documents uploaded yet, creating dummy vectorstore")
+            print("No documents uploaded yet, creating empty ChromaDB collection")
+            chroma_client = initialize_chroma()
+            
+            # Create collection with a dummy document
             dummy_doc = Document(
                 page_content="No documents have been uploaded yet. Please upload a document first.",
                 metadata={"source": "initialization"}
             )
-            _faiss_vectorstore = FAISS.from_documents(
+            _chroma_vectorstore = Chroma.from_documents(
                 documents=[dummy_doc],
-                embedding=embeddings
+                embedding=embeddings,
+                client=chroma_client,
+                collection_name=COLLECTION_NAME
             )
-            retriever = _faiss_vectorstore.as_retriever()
+            retriever = _chroma_vectorstore.as_retriever(search_kwargs={"k": 4})
 
         # Load document description
         if os.path.exists("description.txt"):
             with open("description.txt", "r", encoding="utf-8") as f:
                 description = f.read()
         else:
-            description = None
+            description = "uploaded documents and knowledge base"
 
         retriever_tool = create_retriever_tool(
             retriever,
             "retriever_customer_uploaded_documents",
-            "Search through customer uploaded documents. Use this tool to answer questions about any topics covered in the uploaded documents, including technical concepts, algorithms, and specific subjects."
-)
+            f"Search through {description}. Use this tool to find relevant information from uploaded documents."
+        )
 
         return retriever_tool
 
@@ -114,52 +120,55 @@ def get_retriever():
         raise Exception(e)
 
 
-def save_vectorstore(vectorstore):
-    """Save FAISS vectorstore to disk."""
-    try:
-        Path(VECTORSTORE_PATH).parent.mkdir(parents=True, exist_ok=True)
-        vectorstore.save_local(VECTORSTORE_PATH)
-        print(f"✓ Vector store saved to {VECTORSTORE_PATH}")
-    except Exception as e:
-        print(f"⚠ Error saving vector store: {e}")
-
-
 def load_vectorstore():
-    """Load FAISS vectorstore from disk."""
-    global _faiss_vectorstore
-    if os.path.exists(VECTORSTORE_PATH):
-        try:
-            _faiss_vectorstore = FAISS.load_local(
-                folder_path=VECTORSTORE_PATH, 
-                embeddings=embeddings, 
-                allow_dangerous_deserialization=True
-            )
-            print(f"✓ Vector store loaded from {VECTORSTORE_PATH}")
-            return _faiss_vectorstore
-        except Exception as e:
-            print(f"⚠ Error loading vector store: {e}")
-            return None
-    return None
+    """Load ChromaDB vectorstore."""
+    global _chroma_vectorstore
+    try:
+        chroma_client = initialize_chroma()
+        _chroma_vectorstore = Chroma(
+            client=chroma_client,
+            collection_name=COLLECTION_NAME,
+            embedding_function=embeddings
+        )
+        print(f"✓ ChromaDB collection '{COLLECTION_NAME}' loaded")
+        return _chroma_vectorstore
+    except Exception as e:
+        print(f"⚠ Error loading ChromaDB: {e}")
+        return None
+
 
 def add_documents_to_store(chunks: list) -> list:
-    """Add documents to existing vectorstore without replacing it"""
-    global _faiss_vectorstore
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    """Add documents to existing ChromaDB collection without replacing it"""
+    global _chroma_vectorstore
     
-    if _faiss_vectorstore is None:
-        # Create new if doesn't exist
-        _faiss_vectorstore = FAISS.from_documents(documents=chunks, embedding=embeddings)
-        ids = list(_faiss_vectorstore.docstore._dict.keys())
+    chroma_client = initialize_chroma()
+    
+    if _chroma_vectorstore is None:
+        # Create new collection
+        _chroma_vectorstore = Chroma.from_documents(
+            documents=chunks,
+            embedding=embeddings,
+            client=chroma_client,
+            collection_name=COLLECTION_NAME
+        )
     else:
-        # Append to existing vectorstore
-        ids = list(_faiss_vectorstore.docstore._dict.keys())
+        # Add to existing collection
+        _chroma_vectorstore.add_documents(chunks)
     
-    save_vectorstore(_faiss_vectorstore)
-    return ids
+    # Return document IDs
+    collection = chroma_client.get_collection(COLLECTION_NAME)
+    all_ids = collection.get()['ids']
+    
+    # Return the last N IDs (newly added)
+    new_ids = all_ids[-len(chunks):] if len(all_ids) >= len(chunks) else all_ids
+    
+    print(f"✓ Added {len(chunks)} documents to ChromaDB")
+    return new_ids
+
 
 def delete_document_from_store(name: str) -> bool:
-    """Remove a document from vectorstore and metadata by filename."""
-    global _faiss_vectorstore
+    """Remove a document from ChromaDB and metadata by filename."""
+    global _chroma_vectorstore
     metadata = load_document_metadata()
     
     # Find the entry
@@ -167,11 +176,14 @@ def delete_document_from_store(name: str) -> bool:
     if not entry:
         return False
     
-    # Delete from FAISS vectorstore if IDs stored
+    # Delete from ChromaDB if IDs stored
     doc_ids = entry.get("doc_ids", [])
-    if _faiss_vectorstore and doc_ids:
-        _faiss_vectorstore.delete(doc_ids)
-        save_vectorstore(_faiss_vectorstore)
+    if _chroma_vectorstore and doc_ids:
+        try:
+            _chroma_vectorstore.delete(ids=doc_ids)
+            print(f"✓ Deleted {len(doc_ids)} documents from ChromaDB")
+        except Exception as e:
+            print(f"⚠ Error deleting from ChromaDB: {e}")
     
     # Remove from metadata
     metadata = [m for m in metadata if m["name"] != name]
