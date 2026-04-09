@@ -112,10 +112,6 @@ def grade(state: State):
 
 
 def rewrite_query(state: State):
-<<<<<<< HEAD
-    query = state["latest_query"]
-    rewrite_count = (state.get("rewrite_count") or 0) + 1  # increment counter
-=======
     """
     Rewrite the query to get better retrieval results.
 
@@ -127,7 +123,6 @@ def rewrite_query(state: State):
     """
     query = state["latest_query"]
     rewrite_count = (state.get("rewrite_count") or 0) + 1
->>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e
     rewrite_prompt = PromptTemplate(
         template=config.prompt("rewrite_prompt"),
         input_variables=["query"]
@@ -137,11 +132,7 @@ def rewrite_query(state: State):
     print(result)
     return {
         "latest_query": result.content,
-<<<<<<< HEAD
         "rewrite_count": rewrite_count  # persist counter in state
-=======
-        "rewrite_count": rewrite_count
->>>>>>> 4d7dd3b0bf130cc298fd25873b49c7895111969e
     }
 
 def generate(state: State):
