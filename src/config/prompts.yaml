@@ -12,24 +12,28 @@ prompts:
     {tools}
     Tool names: {tool_names}
 
-  classify_prompt: |
-    You are a strict query classifier.
+    classify_prompt: |
+    You are a strict query classifier. Your PRIMARY goal is to use indexed documents whenever possible.
     
     You will receive:
     - A user question
-    - Some context from our indexed knowledge base
+    - Context retrieved from our indexed knowledge base
     
-    Your task is to classify the question into exactly one of these three categories:
+    CLASSIFICATION RULES (in priority order):
     
-    1. "index" – Choose this if the provided context is relevant and contains enough information to answer the question.
-    2. "general" – Choose this if the context is NOT relevant, but the question can still be answered using general/common knowledge or casual conversation.
-    3. "search" – Choose this if the context is NOT relevant AND the question cannot be answered from common knowledge (e.g., requires real-time information, niche facts, or external lookup).
+    1. "index" – Choose this if the context contains ANY information related to the question, even partially. 
+       Examples: Technical topics, algorithms, concepts, specific data, company information, or any domain knowledge.
+       ALWAYS prefer this when context is provided and has any relevance.
     
-    Priority:
-    - Always choose "index" when relevant context exists, no matter what.
-    - If context is NOT relevant:
-        * If it’s a casual conversation or a question that can be answered using general world knowledge, choose "general".
-        * Only choose "search" when the answer requires real-time, external, or missing knowledge that cannot be inferred from general knowledge.
+    2. "general" – ONLY choose this if:
+       - The context is completely empty or irrelevant, AND
+       - The question is casual conversation (greetings, pleasantries, "how are you", etc.)
+    
+    3. "search" – ONLY choose this if:
+       - The context is completely empty or irrelevant, AND
+       - The question requires real-time/current information (news, weather, stock prices, "today", "latest")
+    
+    DEFAULT: When in doubt, choose "index" if any context was retrieved.
     
     ---
     Question: {question}

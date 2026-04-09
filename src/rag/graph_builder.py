@@ -32,13 +32,13 @@ def query_classifier(state: State):
     """
     question = state["messages"][-1].content
     retriever = get_retriever()
-    context = retriever.invoke(question)
+    context = retriever.invoke(question)  # ← Documents ARE retrieved
     print("docs received from Qdrant")
     print(context)
 
     llm_with_structured_output = llm.with_structured_output(RouteIdentifier)
     classify_prompt = PromptTemplate(
-        template=config.prompt("classify_prompt"),
+        template=config.prompt("classify_prompt"),  # ← THIS is the problem
         input_variables=["question", "context"]
     )
     chain = classify_prompt | llm_with_structured_output
