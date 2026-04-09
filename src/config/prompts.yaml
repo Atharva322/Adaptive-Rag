@@ -12,7 +12,7 @@ prompts:
     {tools}
     Tool names: {tool_names}
 
-    classify_prompt: |
+  classify_prompt: |
     You are a strict query classifier. Your PRIMARY goal is to use indexed documents whenever possible.
     
     You will receive:
