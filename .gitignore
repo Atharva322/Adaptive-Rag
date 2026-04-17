@@ -39,3 +39,4 @@ Thumbs.db
 
 # Local runtime files
 description.txt
+src/__pycache__/**
