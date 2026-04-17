@@ -78,8 +78,8 @@ def documents(description: str, file: UploadFile = File(...)):
 
     # Split documents into chunks
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=150
+        chunk_size=1400,
+        chunk_overlap=200
     )
     chunks = splitter.split_documents(docs)
     doc_type = os.path.splitext(filename)[1].lstrip(".").lower()
