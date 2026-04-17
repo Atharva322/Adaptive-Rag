@@ -2,7 +2,7 @@
 Query request model.
 """
 
-from git import Optional
+from typing import Optional
 from pydantic import BaseModel
 
 
