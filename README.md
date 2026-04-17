@@ -298,11 +298,13 @@ MONGODB_DB_NAME=adaptive_rag
 python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Start Streamlit Frontend:**
+**Start Streamlit Frontend (No-Login Local Mode):**
 ```bash
 # Terminal 2: Run Streamlit app
-streamlit run streamlit_app/home.py
+streamlit run streamlit_app/app.py
 ```
+
+To force the login screen, set `DISABLE_AUTH=0` and run `streamlit_app/home.py`.
 
 **Access the Application:**
 - Web Interface: http://localhost:8501

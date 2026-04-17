@@ -82,8 +82,14 @@ def documents(description: str, file: UploadFile = File(...)):
         chunk_overlap=150
     )
     chunks = splitter.split_documents(docs)
+    doc_type = os.path.splitext(filename)[1].lstrip(".").lower()
+    for chunk in chunks:
+        chunk.metadata.update({
+            "source": filename,
+            "file_name": filename,
+            "doc_type": doc_type,
+        })
 
-    add_documents_to_store(chunks)
     ids = add_documents_to_store(chunks)
     save_document_metadata(file.filename, description, doc_ids=ids)
     return {"status": "success", "message": f"Successfully uploaded and processed {len(chunks)} document chunks"}

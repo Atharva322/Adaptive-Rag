@@ -3,6 +3,8 @@ Home page for Streamlit authentication interface.
 """
 
 import logging
+import os
+import uuid
 
 import streamlit as st
 
@@ -32,6 +34,16 @@ st.set_page_config(page_title="LangGraph Chat - Login")
 st.title("🔐 Welcome to LangGraph Assistant")
 
 token = ""
+
+# Local dev convenience: bypass auth and go straight to chat.
+# Set `DISABLE_AUTH=0` to force the login UI.
+_disable_auth = os.getenv("DISABLE_AUTH", "1").strip().lower() in {"1", "true", "yes", "y", "on"}
+if _disable_auth:
+    if "session_id" not in st.session_state:
+        st.session_state["session_id"] = str(uuid.uuid4())
+    st.session_state["jwt_token"] = st.session_state.get("jwt_token") or "local_dev_token"
+    st.session_state["username"] = st.session_state.get("username") or "local_dev"
+    st.switch_page("pages/01_chat.py")
 
 # Step 1: Fetch API token only once per session
 if "session_id" not in st.session_state:
@@ -66,7 +78,7 @@ if submit:
             if response and response.get("jwt"):
                 st.session_state["jwt_token"] = response["jwt"]
                 st.session_state["username"] = username
-                st.switch_page("pages/Chat.py")
+                st.switch_page("pages/01_chat.py")
             else:
                 st.error("Login failed. Downstream API error: Received empty JWT token.")
 

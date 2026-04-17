@@ -8,18 +8,33 @@ from contextlib import asynccontextmanager
 from src.api.routes import router
 from src.rag.retriever_setup import load_vectorstore
 from src.rag.reAct_agent import rebuild_agent
-from src.db.postgres_client import init_db, close_db
+from src.db import postgres_client
 import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("Initializing PostgreSQL database...")
+    close_history_db = None
+    print("Initializing chat history database...")
     try:
-        await init_db()
-        print("✓ PostgreSQL database initialized")
+        if os.getenv("DATABASE_URL"):
+            await postgres_client.init_db()
+            close_history_db = postgres_client.close_db
+            print("[OK] PostgreSQL chat history initialized")
+        else:
+            # SQLite is optional (depends on `aiosqlite`). If it's not installed,
+            # we still run with an in-memory chat history fallback.
+            try:
+                import aiosqlite  # noqa: F401
+                from src.db import sqlite_client
+
+                await sqlite_client.init_db()
+                close_history_db = sqlite_client.close_db
+                print("[OK] SQLite chat history initialized")
+            except Exception:
+                print("[INFO] SQLite unavailable; using in-memory chat history")
     except Exception as e:
-        print(f"WARNING: PostgreSQL initialization failed: {e}. Chat history features will be unavailable.")
+        print(f"WARNING: Chat history initialization failed: {e}. Chat history may be unavailable.")
 
     print("Loading vectorstore from disk...")
     try:
@@ -35,8 +50,9 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    await close_db()
-    print("✓ Database connections closed")
+    if close_history_db is not None:
+        await close_history_db()
+    print("[OK] Database connections closed")
 
 app = FastAPI(title="Adaptive RAG API", lifespan=lifespan)
 app.include_router(router)

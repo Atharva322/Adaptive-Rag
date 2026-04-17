@@ -36,3 +36,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local runtime files
+description.txt

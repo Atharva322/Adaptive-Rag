@@ -9,12 +9,11 @@ from langgraph.graph import add_messages
 
 
 class State(TypedDict):
-    """State schema for the RAG graph."""
-
-    messages: Annotated[list[AnyMessage], add_messages]
-    binary_score: Optional[str]
-    route: Optional[str]
-    latest_query: Optional[str]
-    rewrite_count: Optional[int]
+    messages: Annotated[list, add_messages]
+    binary_score: str
+    route: str
+    latest_query: str
+    rewrite_count: int
+    metadata_filter: Optional[dict]   # NEW
 
     

@@ -1,1 +1,1 @@
-This tool is specifically designed to retrieve information and answer questions related to the content of the uploaded document titled "Base resume." Please use it exclusively for inquiries concerning the details and particulars contained within this specific resume.
+This tool is exclusively designed to answer questions and provide information specifically related to the content of "EXPERIMENT 8." Please use this tool solely to inquire about details, findings, or any aspect pertaining to the uploaded content of "EXPERIMENT 8."

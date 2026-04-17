@@ -7,6 +7,13 @@ from pathlib import Path
 
 import yaml
 
+SEARCH_TYPE: str = "hybrid"       # "similarity" | "mmr" | "hybrid"
+RETRIEVER_K: int = 4
+BM25_WEIGHT: float = 0.5
+VECTOR_WEIGHT: float = 0.5
+MMR_FETCH_K: int = 20
+MMR_LAMBDA_MULT: float = 0.5
+
 
 class Config:
     """Load and manage configuration from YAML file."""

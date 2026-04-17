@@ -6,6 +6,7 @@ import streamlit as st
 import requests
 import json
 import uuid
+import os
 from datetime import datetime
 import sys
 sys.path.append("..")
@@ -41,9 +42,14 @@ if "chat_loaded" not in st.session_state:
         st.session_state.chat_loaded = True
 
 # Check authentication
+_disable_auth = os.getenv("DISABLE_AUTH", "1").strip().lower() in {"1", "true", "yes", "y", "on"}
 if "jwt_token" not in st.session_state or st.session_state.jwt_token is None:
-    st.warning("Please log in first")
-    st.stop()
+    if _disable_auth:
+        st.session_state.jwt_token = "local_dev_token"
+        st.session_state.username = st.session_state.get("username") or "local_dev"
+    else:
+        st.warning("Please log in first")
+        st.stop()
 
 # Header
 col1, col2 = st.columns([0.9, 0.1])

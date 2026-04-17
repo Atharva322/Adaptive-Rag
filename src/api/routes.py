@@ -3,9 +3,10 @@ API routes for RAG operations.
 """
 
 from fastapi import APIRouter, UploadFile, File, Header
+from httpcore import request
 from langchain_core.messages import HumanMessage, AIMessage
 
-from src.memory.chat_history_postgres import ChatHistory
+from src.memory.chat_history import ChatHistory
 from src.models.query_request import QueryRequest
 from src.rag.document_upload import documents
 from src.rag.graph_builder import builder
@@ -31,6 +32,13 @@ async def rag_query(req: QueryRequest):
         {"messages": [HumanMessage(content=req.query)]},
         config={"recursion_limit": 50}
     )
+    
+    initial_state = {
+    "messages": [HumanMessage(content=req.query)],
+    "latest_query": req.query,
+    "rewrite_count": 0,
+    "metadata_filter": req.metadata_filter,   # NEW
+}
 
     if result.get("messages"):
         last_message = result["messages"][-1]

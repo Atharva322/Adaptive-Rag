@@ -5,14 +5,21 @@ Retriever setup and vector store configuration with ChromaDB.
 import os
 from pathlib import Path
 import json
+from typing import List
 
 from langchain_core.documents import Document
 from langchain_core.tools import create_retriever_tool
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
+from src.rag.hybrid_retriever import (
+    build_bm25_retriever,
+    clear_bm25_retriever,
+    get_bm25_retriever,
+    get_hybrid_retriever,
+)
 
 from src.db.chroma_client import initialize_chroma
-from src.core.config import settings
+import src.config.settings as rag_settings
 
 embeddings = OpenAIEmbeddings()
 
@@ -61,70 +68,57 @@ def _try_load_from_disk():
         count = collection.count()
         
         if count > 0:
-            print(f"✓ ChromaDB loaded with {count} documents")
+            print(f"[OK] ChromaDB loaded with {count} documents")
+            rebuild_bm25_from_store(k=rag_settings.RETRIEVER_K)
         else:
-            print("ℹ ChromaDB collection exists but is empty")
+            print("[INFO] ChromaDB collection exists but is empty")
+            clear_bm25_retriever()
             
     except Exception as e:
-        print(f"⚠ Could not load ChromaDB collection: {e}")
+        print(f"[WARN] Could not load ChromaDB collection: {e}")
         _chroma_vectorstore = None
 
 
-def get_retriever():
-    """
-    Get a retriever tool connected to the ChromaDB vector store.
+def get_retriever(
+    search_type: str = "similarity",  # "similarity" | "mmr" | "hybrid"
+    k: int = 4,
+    metadata_filter: dict | None = None,
+):
+    vectorstore = load_vectorstore()
+    search_kwargs = {"k": k}
+    if metadata_filter:
+        search_kwargs["filter"] = metadata_filter
 
-    Returns:
-        A LangChain retriever tool configured for the vector store.
-    """
-    global _chroma_vectorstore
+    if search_type == "mmr":
+        search_kwargs.update({"fetch_k": rag_settings.MMR_FETCH_K, "lambda_mult": rag_settings.MMR_LAMBDA_MULT})
+        return vectorstore.as_retriever(search_type="mmr", search_kwargs=search_kwargs)
 
-    try:
-        if _chroma_vectorstore is not None:
-            retriever = _chroma_vectorstore.as_retriever(search_kwargs={"k": 4})
-            print("Using existing ChromaDB vectorstore with uploaded documents")
-        else:
-            print("No documents uploaded yet, creating empty ChromaDB collection")
-            chroma_client = initialize_chroma()
-            
-            # Create collection with a dummy document
-            dummy_doc = Document(
-                page_content="No documents have been uploaded yet. Please upload a document first.",
-                metadata={"source": "initialization"}
-            )
-            _chroma_vectorstore = Chroma.from_documents(
-                documents=[dummy_doc],
-                embedding=embeddings,
-                client=chroma_client,
-                collection_name=COLLECTION_NAME
-            )
-            retriever = _chroma_vectorstore.as_retriever(search_kwargs={"k": 4})
+    vector_retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs=search_kwargs)
 
-        # Load document description
-        if os.path.exists("description.txt"):
-            with open("description.txt", "r", encoding="utf-8") as f:
-                description = f.read()
-        else:
-            description = "uploaded documents and knowledge base"
+    if search_type == "hybrid":
+        if get_bm25_retriever() is None:
+            rebuild_bm25_from_store(k=k)
+        return get_hybrid_retriever(vector_retriever, rag_settings.BM25_WEIGHT, rag_settings.VECTOR_WEIGHT)
 
-        retriever_tool = create_retriever_tool(
-            retriever,
-            "retriever_customer_uploaded_documents",
-            f"Search through {description}. Use this tool to find relevant information from uploaded documents."
-        )
+    return vector_retriever
 
-        return retriever_tool
 
-    except Exception as e:
-        print(f"Error initializing retriever: {e}")
-        from langchain.tools import Tool
-        def _dummy_retriever(query: str) -> str:
-            return "Document retrieval is temporarily unavailable. ChromaDB connection failed - please check CHROMA_HOST, CHROMA_PORT, CHROMA_USE_SSL environment variables."
-        return Tool(
-            name="retriever_customer_uploaded_documents",
-            description="Search through uploaded documents.",
-            func=_dummy_retriever
-        )
+def get_retriever_tool(
+    search_type: str = "similarity",
+    k: int = 4,
+    metadata_filter: dict | None = None,
+):
+    """Return a LangChain tool backed by the configured retriever."""
+    retriever = get_retriever(
+        search_type=search_type,
+        k=k,
+        metadata_filter=metadata_filter,
+    )
+    return create_retriever_tool(
+        retriever,
+        "document_retriever",
+        "Search and return relevant snippets from uploaded documents.",
+    )
 
 
 def load_vectorstore():
@@ -137,41 +131,35 @@ def load_vectorstore():
             collection_name=COLLECTION_NAME,
             embedding_function=embeddings
         )
-        print(f"✓ ChromaDB collection '{COLLECTION_NAME}' loaded")
+        print(f"[OK] ChromaDB collection '{COLLECTION_NAME}' loaded")
         return _chroma_vectorstore
     except Exception as e:
-        print(f"⚠ Error loading ChromaDB: {e}")
+        print(f"[WARN] Error loading ChromaDB: {e}")
         return None
 
 
-def add_documents_to_store(chunks: list) -> list:
-    """Add documents to existing ChromaDB collection without replacing it"""
-    global _chroma_vectorstore
-    
-    chroma_client = initialize_chroma()
-    
-    if _chroma_vectorstore is None:
-        # Create new collection
-        _chroma_vectorstore = Chroma.from_documents(
-            documents=chunks,
-            embedding=embeddings,
-            client=chroma_client,
-            collection_name=COLLECTION_NAME
-        )
-    else:
-        # Add to existing collection
-        _chroma_vectorstore.add_documents(chunks)
-    
-    # Return document IDs
-    collection = chroma_client.get_collection(COLLECTION_NAME)
-    all_ids = collection.get()['ids']
-    
-    # Return the last N IDs (newly added)
-    new_ids = all_ids[-len(chunks):] if len(all_ids) >= len(chunks) else all_ids
-    
-    print(f"✓ Added {len(chunks)} documents to ChromaDB")
-    return new_ids
+def _get_all_docs_from_store() -> List[Document]:
+    vectorstore = load_vectorstore()
+    results = vectorstore._collection.get(include=["documents", "metadatas"])
+    return [
+        Document(page_content=text, metadata=meta or {})
+        for text, meta in zip(results["documents"], results["metadatas"])
+    ]
 
+
+def rebuild_bm25_from_store(k: int | None = None) -> None:
+    """Rebuild in-memory BM25 index from all docs currently in Chroma."""
+    all_docs = _get_all_docs_from_store()
+    if not all_docs:
+        clear_bm25_retriever()
+        return
+    build_bm25_retriever(all_docs, k=k or rag_settings.RETRIEVER_K)
+
+def add_documents_to_store(documents: List[Document]) -> list[str]:
+    vectorstore = load_vectorstore()
+    ids = vectorstore.add_documents(documents)
+    rebuild_bm25_from_store(k=rag_settings.RETRIEVER_K)
+    return ids
 
 def delete_document_from_store(name: str) -> bool:
     """Remove a document from ChromaDB and metadata by filename."""
@@ -188,13 +176,15 @@ def delete_document_from_store(name: str) -> bool:
     if _chroma_vectorstore and doc_ids:
         try:
             _chroma_vectorstore.delete(ids=doc_ids)
-            print(f"✓ Deleted {len(doc_ids)} documents from ChromaDB")
+            print(f"[OK] Deleted {len(doc_ids)} documents from ChromaDB")
         except Exception as e:
-            print(f"⚠ Error deleting from ChromaDB: {e}")
+            print(f"[WARN] Error deleting from ChromaDB: {e}")
     
     # Remove from metadata
     metadata = [m for m in metadata if m["name"] != name]
     with open(METADATA_PATH, "w") as f:
         json.dump(metadata, f)
+
+    rebuild_bm25_from_store(k=rag_settings.RETRIEVER_K)
     
     return True

@@ -8,8 +8,9 @@ from langchain_core.prompts import PromptTemplate
 from langgraph.constants import START, END
 from langgraph.graph.state import StateGraph
 
+import src.config.settings as rag_settings
 import src.rag.reAct_agent as reAct_agent_module
-from src.rag.retriever_setup import get_retriever
+from src.rag.retriever_setup import get_retriever, load_document_metadata
 from src.config.settings import Config
 from src.llms.openai import llm
 from src.models.grade import Grade
@@ -31,10 +32,32 @@ def query_classifier(state: State):
         dict: Updated state with route and latest_query.
     """
     question = state["messages"][-1].content
-    retriever = get_retriever()
-    context = retriever.invoke(question)  # ← Documents ARE retrieved
+    try:
+        retriever = get_retriever(
+            search_type=rag_settings.SEARCH_TYPE,
+            k=rag_settings.RETRIEVER_K,
+            metadata_filter=state.get("metadata_filter"),
+        )
+        context = retriever.invoke(question)  # Documents are retrieved
+    except Exception as e:
+        print(f"[WARN] query_classifier retrieval failed: {e}")
+        context = []
     print("docs received from Qdrant")
     print(context)
+
+    # If we retrieved *anything*, always route to index. This avoids the LLM
+    # misclassifying doc queries as "general" and answering with no context.
+    try:
+        if context and len(context) > 0:  # type: ignore[arg-type]
+            return {"messages": state["messages"], "route": "index", "latest_query": question}
+    except Exception:
+        pass
+
+    # If docs exist but retrieval returned nothing, still prefer the index
+    # pipeline for explicit doc requests (e.g. "summarize the uploaded document").
+    docs = load_document_metadata()
+    if docs and any(k in question.lower() for k in ["summarize", "summary", "uploaded document", "the document", "this document"]):
+        return {"messages": state["messages"], "route": "index", "latest_query": question}
 
     llm_with_structured_output = llm.with_structured_output(RouteIdentifier)
     classify_prompt = PromptTemplate(
@@ -67,6 +90,13 @@ def general_llm(state: State):
 
 def retriever_node(state: State):
     messages = state["latest_query"]
+    if reAct_agent_module.agent_executor is None:
+        fallback_message = AIMessage(
+            content="Retriever is temporarily unavailable. Please try again after vector database connection is restored.",
+            additional_kwargs={"tool_calls": []},
+        )
+        return {"messages": [fallback_message]}
+
     # Use module reference so it always gets the latest agent after rebuild
     result = reAct_agent_module.agent_executor.invoke({"input": messages})
 
