@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adaptive RAG System - Architecture Diagram</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+            color: #e2e8f0;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background: #22d3ee;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
+        }
+
+        .subtitle {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        .diagram-container {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        svg {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .card-dot.cyan { background: #22d3ee; }
+        .card-dot.emerald { background: #34d399; }
+        .card-dot.violet { background: #a78bfa; }
+        .card-dot.amber { background: #fbbf24; }
+
+        .card h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .card ul {
+            list-style: none;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .card li {
+            margin-bottom: 0.25rem;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #64748b;
+            padding-top: 1rem;
+            border-top: 1px solid #1e293b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                <span class="status-dot"></span>
+                Adaptive RAG System Architecture
+            </h1>
+            <p class="subtitle">LangGraph + FastAPI + Streamlit | Multi-layer Orchestration with Hybrid Retrieval</p>
+        </header>
+
+        <div class="diagram-container">
+            <svg viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg">
+                <!-- Grid Pattern -->
+                <defs>
+                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+                    </pattern>
+                    
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+                    </marker>
+                    
+                    <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+                    </marker>
+                    
+                    <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+                    </marker>
+                    
+                    <marker id="arrowhead-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+                    </marker>
+                </defs>
+
+                <!-- Background -->
+                <rect width="1200" height="900" fill="#020617"/>
+                <rect width="1200" height="900" fill="url(#grid)" opacity="0.5"/>
+
+                <!-- Connection Lines (drawn first so they appear behind boxes) -->
+                
+                <!-- Client to API -->
+                <path d="M 200 80 L 200 150" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrowhead-cyan)" fill="none"/>
+                <text x="210" y="120" fill="#64748b" font-size="8">HTTP</text>
+                
+                <!-- API to Orchestration -->
+                <path d="M 200 230 L 200 310" stroke="#34d399" stroke-width="2" marker-end="url(#arrowhead-emerald)" fill="none"/>
+                <text x="210" y="270" fill="#64748b" font-size="8">invoke()</text>
+                
+                <!-- Orchestration branching -->
+                <path d="M 200 390 L 90 470" stroke="#34d399" stroke-width="2" marker-end="url(#arrowhead-emerald)" fill="none"/>
+                <path d="M 200 390 L 200 470" stroke="#34d399" stroke-width="2" marker-end="url(#arrowhead-emerald)" fill="none"/>
+                <path d="M 200 390 L 310 470" stroke="#34d399" stroke-width="2" marker-end="url(#arrowhead-emerald)" fill="none"/>
+                
+                <!-- Reasoning Agent to Retrieval -->
+                <path d="M 90 550 L 90 630" stroke="#34d399" stroke-width="2" marker-end="url(#arrowhead-emerald)" fill="none"/>
+                
+                <!-- Retrieval to Ingestion (bidirectional) -->
+                <path d="M 280 680 L 410 680" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrowhead-violet)" fill="none"/>
+                <path d="M 410 700 L 280 700" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrowhead-violet)" fill="none"/>
+                <text x="320" y="675" fill="#64748b" font-size="8">rebuild</text>
+                
+                <!-- API to Ingestion -->
+                <path d="M 280 190 L 500 190 L 500 630" stroke="#34d399" stroke-width="2" marker-end="url(#arrowhead-emerald)" fill="none"/>
+                <text x="510" y="400" fill="#64748b" font-size="8">upload</text>
+                
+                <!-- API to Chat Memory -->
+                <path d="M 280 190 L 700 190 L 700 470" stroke="#34d399" stroke-width="2" marker-end="url(#arrowhead-emerald)" fill="none"/>
+                
+                <!-- Orchestration to LLM Layer -->
+                <path d="M 280 350 L 700 350 L 700 310" stroke="#34d399" stroke-width="2" marker-end="url(#arrowhead-emerald)" fill="none"/>
+                
+                <!-- External Integrations -->
+                <path d="M 970 120 L 700 120 L 700 230" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arrowhead)" fill="none"/>
+                <text x="800" y="115" fill="#64748b" font-size="8">API calls</text>
+                
+                <path d="M 970 210 L 500 210 L 500 310" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arrowhead)" fill="none"/>
+                
+                <path d="M 970 300 L 280 300 L 280 630" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arrowhead)" fill="none"/>
+                
+                <path d="M 970 390 L 820 390 L 820 550" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arrowhead)" fill="none"/>
+
+                <!-- Layer 1: Client/UI Layer -->
+                <rect x="80" y="40" width="240" height="70" rx="6" fill="#0f172a"/>
+                <rect x="80" y="40" width="240" height="70" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+                <text x="200" y="65" fill="white" font-size="12" font-weight="600" text-anchor="middle">Client/UI Layer</text>
+                <text x="200" y="82" fill="#94a3b8" font-size="9" text-anchor="middle">Streamlit App</text>
+                <text x="200" y="98" fill="#64748b" font-size="7" text-anchor="middle">app.py • chat.py • documents.py</text>
+
+                <!-- Layer 2: API Layer -->
+                <rect x="80" y="150" width="240" height="70" rx="6" fill="#0f172a"/>
+                <rect x="80" y="150" width="240" height="70" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+                <text x="200" y="175" fill="white" font-size="12" font-weight="600" text-anchor="middle">API Layer</text>
+                <text x="200" y="192" fill="#94a3b8" font-size="9" text-anchor="middle">FastAPI + Uvicorn</text>
+                <text x="200" y="208" fill="#64748b" font-size="7" text-anchor="middle">main.py • routes.py • CORS middleware</text>
+
+                <!-- Layer 3: Orchestration Layer -->
+                <rect x="80" y="310" width="240" height="90" rx="6" fill="#0f172a"/>
+                <rect x="80" y="310" width="240" height="90" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+                <text x="200" y="335" fill="white" font-size="12" font-weight="600" text-anchor="middle">Orchestration Layer</text>
+                <text x="200" y="352" fill="#94a3b8" font-size="9" text-anchor="middle">Adaptive RAG Graph (LangGraph)</text>
+                <text x="200" y="368" fill="#64748b" font-size="7" text-anchor="middle">query_analysis → route → grade</text>
+                <text x="200" y="383" fill="#64748b" font-size="7" text-anchor="middle">→ rewrite → generate</text>
+
+                <!-- Layer 4: Reasoning/Agent Layer (left branch) -->
+                <rect x="20" y="470" width="140" height="70" rx="6" fill="#0f172a"/>
+                <rect x="20" y="470" width="140" height="70" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+                <text x="90" y="495" fill="white" font-size="11" font-weight="600" text-anchor="middle">Reasoning Agent</text>
+                <text x="90" y="512" fill="#94a3b8" font-size="9" text-anchor="middle">ReAct-style</text>
+                <text x="90" y="528" fill="#64748b" font-size="7" text-anchor="middle">AgentExecutor</text>
+
+                <!-- General LLM (middle branch) -->
+                <rect x="180" y="470" width="140" height="70" rx="6" fill="#0f172a"/>
+                <rect x="180" y="470" width="140" height="70" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+                <text x="250" y="495" fill="white" font-size="11" font-weight="600" text-anchor="middle">General LLM</text>
+                <text x="250" y="512" fill="#94a3b8" font-size="9" text-anchor="middle">Direct Chat</text>
+                <text x="250" y="528" fill="#64748b" font-size="7" text-anchor="middle">No retrieval</text>
+
+                <!-- Web Search (right branch) -->
+                <rect x="340" y="470" width="140" height="70" rx="6" fill="#0f172a"/>
+                <rect x="340" y="470" width="140" height="70" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+                <text x="410" y="495" fill="white" font-size="11" font-weight="600" text-anchor="middle">Web Search</text>
+                <text x="410" y="512" fill="#94a3b8" font-size="9" text-anchor="middle">Tavily API</text>
+                <text x="410" y="528" fill="#64748b" font-size="7" text-anchor="middle">External queries</text>
+
+                <!-- Layer 5: Retrieval & Index Layer -->
+                <rect x="20" y="630" width="260" height="90" rx="6" fill="#0f172a"/>
+                <rect x="20" y="630" width="260" height="90" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+                <text x="150" y="655" fill="white" font-size="12" font-weight="600" text-anchor="middle">Retrieval & Index Layer</text>
+                <text x="150" y="672" fill="#94a3b8" font-size="9" text-anchor="middle">Hybrid: Chroma + BM25</text>
+                <text x="150" y="688" fill="#64748b" font-size="7" text-anchor="middle">EnsembleRetriever • OpenAI Embeddings</text>
+                <text x="150" y="703" fill="#64748b" font-size="7" text-anchor="middle">documents_metadata.json</text>
+
+                <!-- Layer 6: Document Ingestion Pipeline -->
+                <rect x="410" y="630" width="200" height="90" rx="6" fill="#0f172a"/>
+                <rect x="410" y="630" width="200" height="90" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+                <text x="510" y="655" fill="white" font-size="12" font-weight="600" text-anchor="middle">Ingestion Pipeline</text>
+                <text x="510" y="672" fill="#94a3b8" font-size="9" text-anchor="middle">Document Upload</text>
+                <text x="510" y="688" fill="#64748b" font-size="7" text-anchor="middle">PyPDFLoader • TextLoader</text>
+                <text x="510" y="703" fill="#64748b" font-size="7" text-anchor="middle">RecursiveCharacterTextSplitter</text>
+
+                <!-- Layer 7: LLM/Prompt Layer -->
+                <rect x="550" y="230" width="220" height="90" rx="6" fill="#0f172a"/>
+                <rect x="550" y="230" width="220" height="90" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+                <text x="660" y="255" fill="white" font-size="12" font-weight="600" text-anchor="middle">LLM/Prompt Layer</text>
+                <text x="660" y="272" fill="#94a3b8" font-size="9" text-anchor="middle">OpenAI Chat (gpt-4o)</text>
+                <text x="660" y="288" fill="#64748b" font-size="7" text-anchor="middle">prompts.yaml • classifier • grader</text>
+                <text x="660" y="303" fill="#64748b" font-size="7" text-anchor="middle">rewrite • generator • descriptions</text>
+
+                <!-- Layer 8: Chat Memory/Persistence Layer -->
+                <rect x="640" y="470" width="200" height="90" rx="6" fill="#0f172a"/>
+                <rect x="640" y="470" width="200" height="90" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+                <text x="740" y="495" fill="white" font-size="12" font-weight="600" text-anchor="middle">Chat Memory</text>
+                <text x="740" y="512" fill="#94a3b8" font-size="9" text-anchor="middle">Multi-backend Selector</text>
+                <text x="740" y="528" fill="#64748b" font-size="7" text-anchor="middle">PostgreSQL • SQLite • In-memory</text>
+                <text x="740" y="543" fill="#64748b" font-size="7" text-anchor="middle">asyncpg • aiosqlite • MongoDB option</text>
+
+                <!-- Layer 9: External/Cloud Integrations -->
+                <rect x="900" y="40" width="260" height="520" rx="12" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="8,4"/>
+                <text x="1030" y="70" fill="#fbbf24" font-size="11" font-weight="600" text-anchor="middle">External Services</text>
+                
+                <!-- OpenAI API -->
+                <rect x="920" y="90" width="220" height="60" rx="6" fill="#0f172a"/>
+                <rect x="920" y="90" width="220" height="60" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+                <text x="1030" y="112" fill="white" font-size="11" font-weight="600" text-anchor="middle">OpenAI API</text>
+                <text x="1030" y="128" fill="#94a3b8" font-size="9" text-anchor="middle">LLM + Embeddings</text>
+                <text x="1030" y="142" fill="#64748b" font-size="7" text-anchor="middle">OPENAI_API_KEY</text>
+
+                <!-- Tavily Search API -->
+                <rect x="920" y="180" width="220" height="60" rx="6" fill="#0f172a"/>
+                <rect x="920" y="180" width="220" height="60" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+                <text x="1030" y="202" fill="white" font-size="11" font-weight="600" text-anchor="middle">Tavily Search API</text>
+                <text x="1030" y="218" fill="#94a3b8" font-size="9" text-anchor="middle">Web Search</text>
+                <text x="1030" y="232" fill="#64748b" font-size="7" text-anchor="middle">TAVILY_API_KEY</text>
+
+                <!-- Chroma Service -->
+                <rect x="920" y="270" width="220" height="60" rx="6" fill="#0f172a"/>
+                <rect x="920" y="270" width="220" height="60" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+                <text x="1030" y="292" fill="white" font-size="11" font-weight="600" text-anchor="middle">Chroma Service</text>
+                <text x="1030" y="308" fill="#94a3b8" font-size="9" text-anchor="middle">Vector Store (HTTP)</text>
+                <text x="1030" y="322" fill="#64748b" font-size="7" text-anchor="middle">Local or Railway remote</text>
+
+                <!-- PostgreSQL -->
+                <rect x="920" y="360" width="220" height="60" rx="6" fill="#0f172a"/>
+                <rect x="920" y="360" width="220" height="60" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+                <text x="1030" y="382" fill="white" font-size="11" font-weight="600" text-anchor="middle">PostgreSQL</text>
+                <text x="1030" y="398" fill="#94a3b8" font-size="9" text-anchor="middle">Managed Database (optional)</text>
+                <text x="1030" y="412" fill="#64748b" font-size="7" text-anchor="middle">DATABASE_URL</text>
+
+                <!-- MongoDB -->
+                <rect x="920" y="450" width="220" height="60" rx="6" fill="#0f172a"/>
+                <rect x="920" y="450" width="220" height="60" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+                <text x="1030" y="472" fill="white" font-size="11" font-weight="600" text-anchor="middle">MongoDB</text>
+                <text x="1030" y="488" fill="#94a3b8" font-size="9" text-anchor="middle">Optional (module exists)</text>
+                <text x="1030" y="502" fill="#64748b" font-size="7" text-anchor="middle">MONGODB_URL (not default)</text>
+
+                <!-- Deployment indicator -->
+                <rect x="20" y="770" width="260" height="60" rx="6" fill="#0f172a"/>
+                <rect x="20" y="770" width="260" height="60" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+                <text x="150" y="792" fill="white" font-size="11" font-weight="600" text-anchor="middle">Deployment Config</text>
+                <text x="150" y="808" fill="#94a3b8" font-size="9" text-anchor="middle">Procfile: Streamlit process</text>
+                <text x="150" y="822" fill="#64748b" font-size="7" text-anchor="middle">BACKEND_URL • Render/Railway pattern</text>
+
+                <!-- Legend -->
+                <text x="400" y="795" fill="#94a3b8" font-size="10" font-weight="600">Legend:</text>
+                
+                <rect x="400" y="805" width="30" height="15" rx="3" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+                <text x="435" y="816" fill="#94a3b8" font-size="8">Frontend</text>
+                
+                <rect x="510" y="805" width="30" height="15" rx="3" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+                <text x="545" y="816" fill="#94a3b8" font-size="8">Backend/Logic</text>
+                
+                <rect x="640" y="805" width="30" height="15" rx="3" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+                <text x="675" y="816" fill="#94a3b8" font-size="8">Database/Storage</text>
+                
+                <rect x="780" y="805" width="30" height="15" rx="3" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+                <text x="815" y="816" fill="#94a3b8" font-size="8">External/Cloud</text>
+                
+                <line x1="920" y1="812" x2="950" y2="812" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4,4"/>
+                <text x="955" y="816" fill="#94a3b8" font-size="8">API Integration</text>
+            </svg>
+        </div>
+
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-dot cyan"></div>
+                    <h3>Request Flow</h3>
+                </div>
+                <ul>
+                    <li>• User query via Streamlit UI</li>
+                    <li>• FastAPI receives HTTP request</li>
+                    <li>• LangGraph graph analyzes intent</li>
+                    <li>• Routes to retriever/LLM/search</li>
+                    <li>• Grades results, rewrites if needed</li>
+                    <li>• Generates final response</li>
+                    <li>• Returns to client with citations</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-dot emerald"></div>
+                    <h3>Key Technologies</h3>
+                </div>
+                <ul>
+                    <li>• <strong>Frontend:</strong> Streamlit, requests</li>
+                    <li>• <strong>Backend:</strong> FastAPI, Pydantic</li>
+                    <li>• <strong>Orchestration:</strong> LangGraph, LangChain</li>
+                    <li>• <strong>Agent:</strong> ReAct-style tool calling</li>
+                    <li>• <strong>Retrieval:</strong> Chroma + BM25 hybrid</li>
+                    <li>• <strong>LLM:</strong> OpenAI gpt-4o</li>
+                    <li>• <strong>Memory:</strong> Postgres/SQLite/in-memory</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-dot violet"></div>
+                    <h3>Data Persistence</h3>
+                </div>
+                <ul>
+                    <li>• <strong>Vectors:</strong> Chroma HTTP server</li>
+                    <li>• <strong>BM25:</strong> In-memory index</li>
+                    <li>• <strong>Metadata:</strong> documents_metadata.json</li>
+                    <li>• <strong>Chat history:</strong> Auto-selects backend</li>
+                    <li>• <strong>Priority:</strong> Postgres → SQLite → memory</li>
+                    <li>• <strong>Documents:</strong> PDF/TXT chunked on upload</li>
+                    <li>• <strong>Embeddings:</strong> OpenAI text-embedding</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-dot amber"></div>
+                    <h3>Environment Config</h3>
+                </div>
+                <ul>
+                    <li>• <strong>OPENAI_API_KEY:</strong> LLM + embeddings</li>
+                    <li>• <strong>TAVILY_API_KEY:</strong> Web search</li>
+                    <li>• <strong>CHROMA_HOST/PORT:</strong> Vector store</li>
+                    <li>• <strong>DATABASE_URL:</strong> PostgreSQL (opt)</li>
+                    <li>• <strong>MONGODB_URL:</strong> MongoDB (opt)</li>
+                    <li>• <strong>BACKEND_URL:</strong> API endpoint</li>
+                    <li>• <strong>DISABLE_AUTH:</strong> Local mode flag</li>
+                </ul>
+            </div>
+        </div>
+
+        <footer>
+            <p>Adaptive RAG Architecture • Multi-layer LangGraph Orchestration • Hybrid Retrieval with Chroma + BM25</p>
+        </footer>
+    </div>
+</body>
+</html>
