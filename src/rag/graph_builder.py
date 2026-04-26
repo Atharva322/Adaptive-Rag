@@ -43,7 +43,10 @@ def query_classifier(state: State):
         print(f"[WARN] query_classifier retrieval failed: {e}")
         context = []
     print("docs received from Qdrant")
-    print(context)
+    try:
+        print(f"Retrieved docs: {len(context)}")
+    except Exception:
+        print("Retrieved docs: unknown")
 
     # If we retrieved *anything*, always route to index. This avoids the LLM
     # misclassifying doc queries as "general" and answering with no context.
@@ -85,7 +88,7 @@ def general_llm(state: State):
     result = llm.invoke(state["messages"])
     print("inside general llm")
     print(result)
-    return {"messages": result}
+    return {"messages": [result], "retrieved_contexts": [], "final_answer": result.content}
 
 
 def retriever_node(state: State):
@@ -95,25 +98,28 @@ def retriever_node(state: State):
             content="Retriever is temporarily unavailable. Please try again after vector database connection is restored.",
             additional_kwargs={"tool_calls": []},
         )
-        return {"messages": [fallback_message]}
+        return {"messages": [fallback_message], "retrieved_contexts": []}
 
     # Use module reference so it always gets the latest agent after rebuild
     result = reAct_agent_module.agent_executor.invoke({"input": messages})
 
     intermediate_steps = result.get("intermediate_steps", [])
     tool_calls = []
+    retrieved_contexts: list[str] = []
     if intermediate_steps:
         for action, tool_result in intermediate_steps:
             tool_calls.append({
                 "tool": action.tool,
                 "input": action.tool_input,
             })
+            if tool_result:
+                retrieved_contexts.append(str(tool_result))
 
     new_message = AIMessage(
         content=result["output"],
         additional_kwargs={"tool_calls": tool_calls},
     )
-    return {"messages": [new_message]}
+    return {"messages": [new_message], "retrieved_contexts": retrieved_contexts}
 
 
 def grade(state: State):
@@ -185,7 +191,11 @@ def generate(state: State):
     generate_chain = generate_prompt | llm
     result = generate_chain.invoke({"context": context})
 
-    return {"messages": [{"role": "assistant", "content": result.content}]}
+    return {
+        "messages": [{"role": "assistant", "content": result.content}],
+        "retrieved_contexts": state.get("retrieved_contexts", []),
+        "final_answer": result.content,
+    }
 
 
 def web_search(state: State):
@@ -202,8 +212,11 @@ def web_search(state: State):
     result = search_tool.invoke(state["latest_query"])
     contents = [item["content"] for item in result if "content" in item]
     print(contents)
+    joined_content = "\n\n".join(contents)
     return {
-        "messages": [{"role": "assistant", "content": "\n\n".join(contents)}]
+        "messages": [{"role": "assistant", "content": joined_content}],
+        "retrieved_contexts": contents,
+        "final_answer": joined_content,
     }
 
 

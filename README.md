@@ -240,6 +240,53 @@ Form Data:
 
 ---
 
+### 3. RAGAS Evaluation Endpoint
+**Evaluate your RAG quality with standard RAGAS metrics**
+
+```http
+POST /rag/evaluate
+Content-Type: application/json
+
+{
+  "dataset": [
+    {
+      "question": "What are the key ideas in the uploaded document?",
+      "ground_truth": "The answer should summarize the key ideas present in the uploaded document."
+    }
+  ],
+  "metrics": ["faithfulness", "answer_relevancy", "context_precision", "context_recall"],
+  "include_per_sample": true
+}
+```
+
+**Response (example):**
+```json
+{
+  "num_samples": 1,
+  "metrics": ["faithfulness", "answer_relevancy", "context_precision", "context_recall"],
+  "aggregate_scores": {
+    "faithfulness": 0.88,
+    "answer_relevancy": 0.84,
+    "context_precision": 0.79,
+    "context_recall": 0.81
+  },
+  "per_sample_scores": [
+    {
+      "question": "What are the key ideas in the uploaded document?",
+      "answer": "...",
+      "ground_truth": "...",
+      "contexts": ["..."],
+      "faithfulness": 0.88,
+      "answer_relevancy": 0.84,
+      "context_precision": 0.79,
+      "context_recall": 0.81
+    }
+  ]
+}
+```
+
+---
+
 ## 📖 Usage Guide
 
 ### 1. Prerequisites
@@ -348,6 +395,11 @@ response = requests.post(
     }
 )
 print(response.json())
+```
+
+**Run RAGAS evaluation from dataset JSON:**
+```bash
+python scripts/run_ragas_eval.py --dataset examples/ragas_eval_dataset.json
 ```
 
 ---

@@ -2,7 +2,7 @@
 State model for the graph-based RAG system.
 """
 
-from typing import TypedDict, Annotated, Optional
+from typing import TypedDict, Annotated, Optional, NotRequired
 
 from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
@@ -14,6 +14,8 @@ class State(TypedDict):
     route: str
     latest_query: str
     rewrite_count: int
-    metadata_filter: Optional[dict]   # NEW
+    metadata_filter: Optional[dict]
+    retrieved_contexts: NotRequired[list[str]]
+    final_answer: NotRequired[str]
 
     

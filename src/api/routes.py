@@ -8,6 +8,8 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 from src.memory.chat_history import ChatHistory
 from src.models.query_request import QueryRequest
+from src.models.ragas_eval_request import RagasEvalRequest
+from src.evaluation.ragas_evaluator import EvalSample, evaluate_with_ragas
 from src.rag.document_upload import documents
 from src.rag.graph_builder import builder
 from src.rag.retriever_setup import load_document_metadata, delete_document_from_store
@@ -28,17 +30,14 @@ async def rag_query(req: QueryRequest):
 
     await chat_history.add_message(HumanMessage(content=req.query))
 
-    result = builder.invoke(
-        {"messages": [HumanMessage(content=req.query)]},
-        config={"recursion_limit": 50}
-    )
-    
     initial_state = {
-    "messages": [HumanMessage(content=req.query)],
-    "latest_query": req.query,
-    "rewrite_count": 0,
-    "metadata_filter": req.metadata_filter,   # NEW
-}
+        "messages": [HumanMessage(content=req.query)],
+        "latest_query": req.query,
+        "rewrite_count": 0,
+        "metadata_filter": req.metadata_filter,
+    }
+
+    result = builder.invoke(initial_state, config={"recursion_limit": 50})
 
     if result.get("messages"):
         last_message = result["messages"][-1]
@@ -48,6 +47,25 @@ async def rag_query(req: QueryRequest):
             await chat_history.add_message(AIMessage(content=last_message.get("content", "")))
 
     return result
+
+
+@router.post("/rag/evaluate")
+async def rag_evaluate(req: RagasEvalRequest):
+    """Evaluate Adaptive RAG responses with RAGAS metrics."""
+    samples = [
+        EvalSample(
+            question=item.question,
+            ground_truth=item.ground_truth,
+            metadata_filter=item.metadata_filter,
+        )
+        for item in req.dataset
+    ]
+
+    return evaluate_with_ragas(
+        samples=samples,
+        metrics=req.metrics,
+        include_per_sample=req.include_per_sample,
+    )
 
 @router.get("/rag/chat_history")
 async def get_chat_history(session_id: str):

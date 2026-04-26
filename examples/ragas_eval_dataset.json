@@ -1,0 +1,10 @@
+[
+  {
+    "question": "What are the main topics covered in the uploaded document?",
+    "ground_truth": "The answer should summarize the major topics explicitly present in the uploaded document."
+  },
+  {
+    "question": "Can you provide a concise summary of the uploaded document?",
+    "ground_truth": "The response should provide a concise summary grounded in the uploaded document content."
+  }
+]
