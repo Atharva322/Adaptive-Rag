@@ -18,6 +18,8 @@ from src.rag.graph_builder import builder
 class EvalSample:
     question: str
     ground_truth: str
+    answer: str | None = None
+    contexts: list[str] | None = None
     metadata_filter: dict | None = None
 
 
@@ -127,7 +129,11 @@ def evaluate_with_ragas(
     rows = []
 
     for sample in samples:
-        answer, contexts = _run_single_query(sample.question, sample.metadata_filter)
+        if sample.answer is not None and sample.contexts is not None:
+            answer = str(sample.answer).strip()
+            contexts = [str(context).strip() for context in sample.contexts if str(context).strip()]
+        else:
+            answer, contexts = _run_single_query(sample.question, sample.metadata_filter)
         rows.append(
             {
                 "question": sample.question,
@@ -143,6 +149,9 @@ def evaluate_with_ragas(
         metrics=selected_metrics,
         llm=LangchainLLMWrapper(llm),
         embeddings=LangchainEmbeddingsWrapper(OpenAIEmbeddings()),
+        # FastAPI/Uvicorn (uvloop) cannot run nested event loops.
+        # This should remain False in server environments.
+        allow_nest_asyncio=False,
     )
 
     score_df = score.to_pandas()

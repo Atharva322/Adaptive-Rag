@@ -19,6 +19,14 @@ RagasMetricName = Literal[
 class RagasSample(BaseModel):
     question: str = Field(..., description="User question to evaluate.")
     ground_truth: str = Field(..., description="Expected reference answer.")
+    answer: Optional[str] = Field(
+        default=None,
+        description="Optional exact generated answer to score. If omitted, backend runs the graph.",
+    )
+    contexts: Optional[list[str]] = Field(
+        default=None,
+        description="Optional exact retrieved contexts used for the answer.",
+    )
     metadata_filter: Optional[dict] = Field(
         default=None,
         description="Optional retrieval metadata filter for this sample.",

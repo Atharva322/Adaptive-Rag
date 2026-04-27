@@ -55,6 +55,8 @@ async def rag_evaluate(req: RagasEvalRequest):
         EvalSample(
             question=item.question,
             ground_truth=item.ground_truth,
+            answer=item.answer,
+            contexts=item.contexts,
             metadata_filter=item.metadata_filter,
         )
         for item in req.dataset

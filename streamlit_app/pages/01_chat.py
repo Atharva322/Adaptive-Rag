@@ -262,11 +262,13 @@ if user_input:
                 if isinstance(result, dict):
                     answer = result.get("messages", [{}])[-1].get("content", "No answer generated")
                     sources = result.get("messages", [{}])[-1].get("sources", [])
+                    retrieved_contexts = result.get("retrieved_contexts", [])
                     confidence = result.get("binary_score")
                     route = result.get("route")
                 else:
                     answer = str(result)
                     sources = []
+                    retrieved_contexts = []
                     confidence = None
                     route = None
 
@@ -298,6 +300,8 @@ if user_input:
                             ragas_result = evaluate_ragas(
                                 question=enhanced_query,
                                 ground_truth=ground_truth,
+                                answer=answer,
+                                contexts=retrieved_contexts,
                                 include_per_sample=True,
                                 metrics=st.session_state.ragas_selected_metrics,
                             )

@@ -127,6 +127,8 @@ def delete_document(document_name: str):
 def evaluate_ragas(
     question: str,
     ground_truth: str,
+    answer: str | None = None,
+    contexts: list[str] | None = None,
     include_per_sample: bool = True,
     metrics: list[str] | None = None,
 ):
@@ -137,6 +139,8 @@ def evaluate_ragas(
                 {
                     "question": question,
                     "ground_truth": ground_truth,
+                    "answer": answer,
+                    "contexts": contexts,
                 }
             ],
             "include_per_sample": include_per_sample,
