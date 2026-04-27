@@ -10,7 +10,13 @@ import os
 from datetime import datetime
 import sys
 sys.path.append("..")
-from utils.api_client import query_backend, document_upload_rag, BASE_API_URL, delete_document
+from utils.api_client import (
+    query_backend,
+    document_upload_rag,
+    BASE_API_URL,
+    delete_document,
+    evaluate_ragas,
+)
 
 
 st.set_page_config(
@@ -40,6 +46,17 @@ if "chat_loaded" not in st.session_state:
         st.session_state.chat_loaded = True
     except:
         st.session_state.chat_loaded = True
+if "enable_ragas_eval" not in st.session_state:
+    st.session_state.enable_ragas_eval = False
+if "ragas_ground_truth" not in st.session_state:
+    st.session_state.ragas_ground_truth = ""
+if "ragas_selected_metrics" not in st.session_state:
+    st.session_state.ragas_selected_metrics = [
+        "faithfulness",
+        "answer_relevancy",
+        "context_precision",
+        "context_recall",
+    ]
 
 # Check authentication
 _disable_auth = os.getenv("DISABLE_AUTH", "1").strip().lower() in {"1", "true", "yes", "y", "on"}
@@ -141,6 +158,32 @@ with st.sidebar:
                     else:
                         st.error(f"Delete failed: {result.get('message', 'Unknown error')}")
 
+    st.divider()
+    st.subheader("RAGAS Evaluation")
+    st.session_state.enable_ragas_eval = st.toggle(
+        "Show RAGAS scores",
+        value=st.session_state.enable_ragas_eval,
+        help="Optional: evaluate each response with RAGAS using your ground truth.",
+    )
+    if st.session_state.enable_ragas_eval:
+        st.session_state.ragas_ground_truth = st.text_area(
+            "Ground truth for next question",
+            value=st.session_state.ragas_ground_truth,
+            placeholder="Write the expected ideal answer for the next question...",
+            height=100,
+            help="RAGAS uses this as reference to score faithfulness/relevancy/recall/precision.",
+        )
+        st.session_state.ragas_selected_metrics = st.multiselect(
+            "Metrics",
+            options=[
+                "faithfulness",
+                "answer_relevancy",
+                "context_precision",
+                "context_recall",
+            ],
+            default=st.session_state.ragas_selected_metrics,
+        )
+
 # Main chat area
 st.subheader("Conversation")
 
@@ -169,6 +212,20 @@ for message in st.session_state.messages:
                 with col2:
                     if "processing_time" in meta:
                         st.metric("Processing Time", f"{meta['processing_time']:.2f}s")
+            if "ragas_scores" in message:
+                ragas_data = message["ragas_scores"]
+                with st.expander("RAGAS Scores", expanded=False):
+                    aggregate = ragas_data.get("aggregate_scores", {})
+                    if aggregate:
+                        metric_cols = st.columns(len(aggregate))
+                        for idx, (metric_name, metric_value) in enumerate(aggregate.items()):
+                            with metric_cols[idx]:
+                                if isinstance(metric_value, float):
+                                    st.metric(metric_name, f"{metric_value:.3f}")
+                                else:
+                                    st.metric(metric_name, str(metric_value))
+                    else:
+                        st.caption("No aggregate RAGAS scores available for this message.")
 
 # Chat input
 st.divider()
@@ -233,6 +290,36 @@ if user_input:
                         st.metric("Match Quality", f"{confidence}")
                     if route:
                         st.caption(f"Query routed to: {route}")
+
+                if st.session_state.enable_ragas_eval:
+                    ground_truth = st.session_state.ragas_ground_truth.strip()
+                    if ground_truth:
+                        with st.spinner("Computing RAGAS scores..."):
+                            ragas_result = evaluate_ragas(
+                                question=enhanced_query,
+                                ground_truth=ground_truth,
+                                include_per_sample=True,
+                                metrics=st.session_state.ragas_selected_metrics,
+                            )
+                        if ragas_result.get("status") == "success":
+                            ragas_data = ragas_result.get("data", {})
+                            message_data["ragas_scores"] = ragas_data
+                            with st.expander("RAGAS Scores", expanded=False):
+                                aggregate = ragas_data.get("aggregate_scores", {})
+                                if aggregate:
+                                    metric_cols = st.columns(len(aggregate))
+                                    for idx, (metric_name, metric_value) in enumerate(aggregate.items()):
+                                        with metric_cols[idx]:
+                                            if isinstance(metric_value, float):
+                                                st.metric(metric_name, f"{metric_value:.3f}")
+                                            else:
+                                                st.metric(metric_name, str(metric_value))
+                                else:
+                                    st.caption("No aggregate scores returned by backend.")
+                        else:
+                            st.warning(f"RAGAS evaluation failed: {ragas_result.get('message', 'Unknown error')}")
+                    else:
+                        st.caption("RAGAS is enabled. Add a ground truth in the sidebar to score this answer.")
 
                 st.session_state.messages.append(message_data)
 

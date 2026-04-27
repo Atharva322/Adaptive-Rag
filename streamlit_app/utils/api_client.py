@@ -122,3 +122,44 @@ def delete_document(document_name: str):
         return {"status": "error", "message": f"HTTP {response.status_code}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+def evaluate_ragas(
+    question: str,
+    ground_truth: str,
+    include_per_sample: bool = True,
+    metrics: list[str] | None = None,
+):
+    """Evaluate a single question-answer flow with RAGAS."""
+    try:
+        payload = {
+            "dataset": [
+                {
+                    "question": question,
+                    "ground_truth": ground_truth,
+                }
+            ],
+            "include_per_sample": include_per_sample,
+        }
+        if metrics:
+            payload["metrics"] = metrics
+
+        response = requests.post(
+            f"{BASE_API_URL}/rag/evaluate",
+            json=payload,
+            headers={
+                "accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            timeout=120,
+        )
+        if response.status_code == 200:
+            return {"status": "success", "data": response.json()}
+
+        try:
+            detail = response.json().get("detail", response.text)
+        except Exception:
+            detail = response.text or f"HTTP {response.status_code}"
+        return {"status": "error", "message": detail}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
