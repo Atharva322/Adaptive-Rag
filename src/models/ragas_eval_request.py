@@ -2,9 +2,18 @@
 Request models for RAGAS evaluation.
 """
 
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
+
+
+RagasMetricName = Literal[
+    "faithfulness",
+    "answer_relevancy",
+    "response_relevancy",
+    "context_precision",
+    "context_recall",
+]
 
 
 class RagasSample(BaseModel):
@@ -18,9 +27,10 @@ class RagasSample(BaseModel):
 
 class RagasEvalRequest(BaseModel):
     dataset: list[RagasSample]
-    metrics: Optional[list[str]] = Field(
+    metrics: Optional[list[RagasMetricName]] = Field(
         default=None,
         description="Optional metric names. Defaults to core RAGAS metrics.",
+        examples=[["faithfulness", "answer_relevancy", "context_precision", "context_recall"]],
     )
     include_per_sample: bool = Field(
         default=True,

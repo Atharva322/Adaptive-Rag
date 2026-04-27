@@ -2,8 +2,7 @@
 API routes for RAG operations.
 """
 
-from fastapi import APIRouter, UploadFile, File, Header
-from httpcore import request
+from fastapi import APIRouter, UploadFile, File, Header, HTTPException
 from langchain_core.messages import HumanMessage, AIMessage
 
 from src.memory.chat_history import ChatHistory
@@ -61,11 +60,16 @@ async def rag_evaluate(req: RagasEvalRequest):
         for item in req.dataset
     ]
 
-    return evaluate_with_ragas(
-        samples=samples,
-        metrics=req.metrics,
-        include_per_sample=req.include_per_sample,
-    )
+    try:
+        return evaluate_with_ragas(
+            samples=samples,
+            metrics=req.metrics,
+            include_per_sample=req.include_per_sample,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 @router.get("/rag/chat_history")
 async def get_chat_history(session_id: str):
