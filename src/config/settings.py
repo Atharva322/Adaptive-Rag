@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 
 SEARCH_TYPE: str = "hybrid"       # "similarity" | "mmr" | "hybrid"
-RETRIEVER_K: int = 4
+RETRIEVER_K: int = 8
 BM25_WEIGHT: float = 0.5
 VECTOR_WEIGHT: float = 0.5
 MMR_FETCH_K: int = 20

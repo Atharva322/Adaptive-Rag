@@ -49,7 +49,7 @@ async def rag_query(req: QueryRequest):
 
 
 @router.post("/rag/evaluate")
-async def rag_evaluate(req: RagasEvalRequest):
+def rag_evaluate(req: RagasEvalRequest):
     """Evaluate Adaptive RAG responses with RAGAS metrics."""
     samples = [
         EvalSample(

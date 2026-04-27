@@ -17,7 +17,7 @@ from src.rag.graph_builder import builder
 @dataclass
 class EvalSample:
     question: str
-    ground_truth: str
+    ground_truth: str | None = None
     answer: str | None = None
     contexts: list[str] | None = None
     metadata_filter: dict | None = None
@@ -125,23 +125,43 @@ def evaluate_with_ragas(
         LangchainLLMWrapper,
         LangchainEmbeddingsWrapper,
     ) = _load_ragas_dependencies()
-    selected_metrics = _resolve_metrics(metrics, metric_registry)
     rows = []
 
+    has_ground_truth = True
+    has_contexts = True
     for sample in samples:
-        if sample.answer is not None and sample.contexts is not None:
+        if sample.answer is not None:
             answer = str(sample.answer).strip()
-            contexts = [str(context).strip() for context in sample.contexts if str(context).strip()]
+            sample_contexts = sample.contexts or []
+            contexts = [str(context).strip() for context in sample_contexts if str(context).strip()]
         else:
             answer, contexts = _run_single_query(sample.question, sample.metadata_filter)
-        rows.append(
-            {
-                "question": sample.question,
-                "answer": answer,
-                "contexts": contexts,
-                "ground_truth": sample.ground_truth,
-            }
-        )
+
+        ground_truth = (sample.ground_truth or "").strip()
+        if not ground_truth:
+            has_ground_truth = False
+        if not contexts:
+            has_contexts = False
+
+        row = {
+            "question": sample.question,
+            "answer": answer,
+            "contexts": contexts,
+        }
+        if ground_truth:
+            row["ground_truth"] = ground_truth
+
+        rows.append(row)
+
+    if metrics:
+        selected_metrics = _resolve_metrics(metrics, metric_registry)
+    else:
+        dynamic_defaults = ["answer_relevancy"]
+        if has_contexts:
+            dynamic_defaults.append("faithfulness")
+        if has_contexts and has_ground_truth:
+            dynamic_defaults.extend(["context_precision", "context_recall"])
+        selected_metrics = _resolve_metrics(dynamic_defaults, metric_registry)
 
     dataset = Dataset.from_list(rows)
     score = evaluate(
@@ -167,7 +187,7 @@ def evaluate_with_ragas(
     }
 
     if include_per_sample:
-        base_columns = ["question", "answer", "ground_truth", "contexts"]
+        base_columns = ["question", "answer", "contexts", "ground_truth"]
         available = [col for col in base_columns + metric_columns if col in score_df.columns]
         response["per_sample_scores"] = score_df[available].to_dict(orient="records")
 

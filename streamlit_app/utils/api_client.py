@@ -126,7 +126,7 @@ def delete_document(document_name: str):
 
 def evaluate_ragas(
     question: str,
-    ground_truth: str,
+    ground_truth: str | None = None,
     answer: str | None = None,
     contexts: list[str] | None = None,
     include_per_sample: bool = True,
@@ -134,17 +134,15 @@ def evaluate_ragas(
 ):
     """Evaluate a single question-answer flow with RAGAS."""
     try:
-        payload = {
-            "dataset": [
-                {
-                    "question": question,
-                    "ground_truth": ground_truth,
-                    "answer": answer,
-                    "contexts": contexts,
-                }
-            ],
-            "include_per_sample": include_per_sample,
-        }
+        sample = {"question": question}
+        if ground_truth:
+            sample["ground_truth"] = ground_truth
+        if answer is not None:
+            sample["answer"] = answer
+        if contexts is not None:
+            sample["contexts"] = contexts
+
+        payload = {"dataset": [sample], "include_per_sample": include_per_sample}
         if metrics:
             payload["metrics"] = metrics
 

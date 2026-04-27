@@ -18,7 +18,10 @@ RagasMetricName = Literal[
 
 class RagasSample(BaseModel):
     question: str = Field(..., description="User question to evaluate.")
-    ground_truth: str = Field(..., description="Expected reference answer.")
+    ground_truth: Optional[str] = Field(
+        default=None,
+        description="Optional expected reference answer.",
+    )
     answer: Optional[str] = Field(
         default=None,
         description="Optional exact generated answer to score. If omitted, backend runs the graph.",
