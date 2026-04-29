@@ -57,6 +57,7 @@ def rag_evaluate(req: RagasEvalRequest):
             ground_truth=item.ground_truth,
             answer=item.answer,
             contexts=item.contexts,
+            relevant_contexts=item.relevant_contexts,
             metadata_filter=item.metadata_filter,
         )
         for item in req.dataset

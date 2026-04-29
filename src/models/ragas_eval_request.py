@@ -11,6 +11,7 @@ RagasMetricName = Literal[
     "faithfulness",
     "answer_relevancy",
     "response_relevancy",
+    "answer_correctness",
     "context_precision",
     "context_recall",
 ]
@@ -29,6 +30,10 @@ class RagasSample(BaseModel):
     contexts: Optional[list[str]] = Field(
         default=None,
         description="Optional exact retrieved contexts used for the answer.",
+    )
+    relevant_contexts: Optional[list[str]] = Field(
+        default=None,
+        description="Optional ground-truth relevant contexts for retrieval metrics like Recall@K and MRR.",
     )
     metadata_filter: Optional[dict] = Field(
         default=None,

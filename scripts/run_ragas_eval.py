@@ -36,7 +36,10 @@ def _load_samples(dataset_path: Path) -> list[EvalSample]:
         samples.append(
             EvalSample(
                 question=row["question"],
-                ground_truth=row["ground_truth"],
+                ground_truth=row.get("ground_truth"),
+                answer=row.get("answer"),
+                contexts=row.get("contexts"),
+                relevant_contexts=row.get("relevant_contexts"),
                 metadata_filter=row.get("metadata_filter"),
             )
         )
