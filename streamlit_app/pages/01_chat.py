@@ -20,7 +20,6 @@ from utils.api_client import (
 CHAT_EVAL_METRICS = [
     "faithfulness",
     "answer_relevancy",
-    "answer_correctness",
     "context_precision",
     "context_recall",
 ]
@@ -28,7 +27,6 @@ CHAT_EVAL_METRICS = [
 DISPLAY_METRICS = [
     "faithfulness",
     "answer_relevancy",
-    "answer_correctness",
     "context_precision",
     "context_recall",
     "recall_at_3",
