@@ -129,6 +129,7 @@ def evaluate_ragas(
     ground_truth: str | None = None,
     answer: str | None = None,
     contexts: list[str] | None = None,
+    relevant_contexts: list[str] | None = None,
     include_per_sample: bool = True,
     metrics: list[str] | None = None,
 ):
@@ -141,6 +142,8 @@ def evaluate_ragas(
             sample["answer"] = answer
         if contexts is not None:
             sample["contexts"] = contexts
+        if relevant_contexts is not None:
+            sample["relevant_contexts"] = relevant_contexts
 
         payload = {"dataset": [sample], "include_per_sample": include_per_sample}
         if metrics:
@@ -154,38 +157,6 @@ def evaluate_ragas(
                 "Content-Type": "application/json",
             },
             timeout=120,
-        )
-        if response.status_code == 200:
-            return {"status": "success", "data": response.json()}
-
-        try:
-            detail = response.json().get("detail", response.text)
-        except Exception:
-            detail = response.text or f"HTTP {response.status_code}"
-        return {"status": "error", "message": detail}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-
-def evaluate_ragas_dataset(
-    dataset: list[dict],
-    include_per_sample: bool = True,
-    metrics: list[str] | None = None,
-):
-    """Evaluate a benchmark dataset with RAGAS and retrieval metrics."""
-    try:
-        payload = {"dataset": dataset, "include_per_sample": include_per_sample}
-        if metrics:
-            payload["metrics"] = metrics
-
-        response = requests.post(
-            f"{BASE_API_URL}/rag/evaluate",
-            json=payload,
-            headers={
-                "accept": "application/json",
-                "Content-Type": "application/json",
-            },
-            timeout=300,
         )
         if response.status_code == 200:
             return {"status": "success", "data": response.json()}

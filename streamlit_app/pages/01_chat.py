@@ -4,7 +4,6 @@ Main chat interface with RAG capabilities and source document display.
 
 import streamlit as st
 import requests
-import json
 import uuid
 import os
 from datetime import datetime
@@ -17,6 +16,40 @@ from utils.api_client import (
     delete_document,
     evaluate_ragas,
 )
+
+CHAT_EVAL_METRICS = [
+    "faithfulness",
+    "answer_relevancy",
+    "answer_correctness",
+    "context_precision",
+    "context_recall",
+]
+
+DISPLAY_METRICS = [
+    "faithfulness",
+    "answer_relevancy",
+    "answer_correctness",
+    "context_precision",
+    "context_recall",
+    "recall_at_3",
+    "recall_at_5",
+    "recall_at_10",
+    "mrr",
+]
+
+
+def render_eval_metrics(ragas_data: dict):
+    aggregate = ragas_data.get("aggregate_scores", {})
+    if not aggregate:
+        return
+    st.caption("Retrieval metrics use answer-context overlap proxy for single-turn chat evaluation.")
+    cols = st.columns(3)
+    for idx, metric_name in enumerate(DISPLAY_METRICS):
+        value = aggregate.get(metric_name)
+        if value is None:
+            continue
+        with cols[idx % 3]:
+            st.metric(metric_name, f"{float(value):.3f}")
 
 
 st.set_page_config(
@@ -178,9 +211,7 @@ for message in st.session_state.messages:
                         st.metric("Processing Time", f"{meta['processing_time']:.2f}s")
             if "ragas_scores" in message:
                 ragas_data = message["ragas_scores"]
-                aggregate = ragas_data.get("aggregate_scores", {})
-                if aggregate:
-                    st.metric("RAGAS (answer_relevancy)", f"{aggregate.get('answer_relevancy', 0.0):.3f}")
+                render_eval_metrics(ragas_data)
 
 # Chat input
 st.divider()
@@ -252,15 +283,14 @@ if user_input:
                     question=user_input,
                     answer=answer,
                     contexts=retrieved_contexts,
+                    relevant_contexts=[answer] if answer else None,
                     include_per_sample=False,
-                    metrics=["answer_relevancy"],
+                    metrics=CHAT_EVAL_METRICS,
                 )
                 if ragas_result.get("status") == "success":
                     ragas_data = ragas_result.get("data", {})
                     message_data["ragas_scores"] = ragas_data
-                    aggregate = ragas_data.get("aggregate_scores", {})
-                    if aggregate:
-                        st.metric("RAGAS (answer_relevancy)", f"{aggregate.get('answer_relevancy', 0.0):.3f}")
+                    render_eval_metrics(ragas_data)
                 else:
                     st.caption(f"RAGAS unavailable: {ragas_result.get('message', 'unknown error')}")
 
