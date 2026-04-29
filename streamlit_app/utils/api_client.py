@@ -84,13 +84,14 @@ def document_upload_rag(file, description: str, session_id: str):
         files = {
             'file': (file.name, file.getvalue(), file.type)
         }
+        data = {
+            "description": (description or "").strip()
+        }
         
         response = requests.post(
             f"{BASE_API_URL}/rag/documents/upload",
             files=files,
-            headers={
-                "X-Description": description
-            },
+            data=data,
             timeout=60
         )
         

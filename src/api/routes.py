@@ -2,7 +2,9 @@
 API routes for RAG operations.
 """
 
-from fastapi import APIRouter, UploadFile, File, Header, HTTPException
+from typing import Optional
+
+from fastapi import APIRouter, UploadFile, File, Form, Header, HTTPException
 from langchain_core.messages import HumanMessage, AIMessage
 
 from src.memory.chat_history import ChatHistory
@@ -93,10 +95,19 @@ async def get_chat_history(session_id: str):
 @router.post("/rag/documents/upload")
 async def upload_file(
     file: UploadFile = File(...),
-    description: str = Header(..., alias="X-Description")
+    description: Optional[str] = Form(default=None),
+    x_description: Optional[str] = Header(default=None, alias="X-Description"),
 ):
     """Upload a document for RAG processing."""
-    status_upload = documents(description, file)
+    resolved_description = (description if description is not None else x_description) or ""
+    resolved_description = resolved_description.strip()
+    if not resolved_description:
+        raise HTTPException(
+            status_code=400,
+            detail="Document description is required.",
+        )
+
+    status_upload = documents(resolved_description, file)
 
     rebuild_agent()
 
