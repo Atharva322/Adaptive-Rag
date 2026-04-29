@@ -25,10 +25,6 @@ CHAT_EVAL_METRICS = [
 DISPLAY_METRICS = [
     "faithfulness",
     "answer_relevancy",
-    "recall_at_3",
-    "recall_at_5",
-    "recall_at_10",
-    "mrr",
 ]
 
 
@@ -36,7 +32,6 @@ def render_eval_metrics(ragas_data: dict):
     aggregate = ragas_data.get("aggregate_scores", {})
     if not aggregate:
         return
-    st.caption("Retrieval metrics use answer-context overlap proxy for single-turn chat evaluation.")
     cols = st.columns(3)
     for idx, metric_name in enumerate(DISPLAY_METRICS):
         value = aggregate.get(metric_name)
@@ -73,6 +68,8 @@ if "chat_loaded" not in st.session_state:
         st.session_state.chat_loaded = True
     except:
         st.session_state.chat_loaded = True
+if "enable_chat_eval" not in st.session_state:
+    st.session_state.enable_chat_eval = False
 
 # Check authentication
 _disable_auth = os.getenv("DISABLE_AUTH", "1").strip().lower() in {"1", "true", "yes", "y", "on"}
@@ -99,6 +96,11 @@ with col2:
 # Sidebar - Document Management
 with st.sidebar:
     st.header("Document Management")
+    st.session_state.enable_chat_eval = st.toggle(
+        "Enable Chat Evaluation",
+        value=st.session_state.enable_chat_eval,
+        help="Run lightweight RAGAS metrics (faithfulness, answer_relevancy) for each answer.",
+    )
 
     # File uploader
     uploaded_file = st.file_uploader(
@@ -273,20 +275,20 @@ if user_input:
                     if route:
                         st.caption(f"Query routed to: {route}")
 
-                ragas_result = evaluate_ragas(
-                    question=user_input,
-                    answer=answer,
-                    contexts=retrieved_contexts,
-                    relevant_contexts=[answer] if answer else None,
-                    include_per_sample=False,
-                    metrics=CHAT_EVAL_METRICS,
-                )
-                if ragas_result.get("status") == "success":
-                    ragas_data = ragas_result.get("data", {})
-                    message_data["ragas_scores"] = ragas_data
-                    render_eval_metrics(ragas_data)
-                else:
-                    st.caption(f"RAGAS unavailable: {ragas_result.get('message', 'unknown error')}")
+                if st.session_state.enable_chat_eval:
+                    ragas_result = evaluate_ragas(
+                        question=user_input,
+                        answer=answer,
+                        contexts=retrieved_contexts,
+                        include_per_sample=False,
+                        metrics=CHAT_EVAL_METRICS,
+                    )
+                    if ragas_result.get("status") == "success":
+                        ragas_data = ragas_result.get("data", {})
+                        message_data["ragas_scores"] = ragas_data
+                        render_eval_metrics(ragas_data)
+                    else:
+                        st.caption(f"RAGAS unavailable: {ragas_result.get('message', 'unknown error')}")
 
                 st.session_state.messages.append(message_data)
 

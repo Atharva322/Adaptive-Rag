@@ -42,7 +42,6 @@ def query_classifier(state: State):
     except Exception as e:
         print(f"[WARN] query_classifier retrieval failed: {e}")
         context = []
-    print("docs received from Qdrant")
     try:
         print(f"Retrieved docs: {len(context)}")
     except Exception:
@@ -69,8 +68,7 @@ def query_classifier(state: State):
     )
     chain = classify_prompt | llm_with_structured_output
     result = chain.invoke({"question": question, "context": context})
-    print("result received is in query classifier")
-    print(result.route)
+    print(f"[query_classifier] route={result.route}")
 
     return {"messages": state["messages"], "route": result.route, "latest_query": question}
 
@@ -86,8 +84,6 @@ def general_llm(state: State):
         dict: Updated messages from LLM.
     """
     result = llm.invoke(state["messages"])
-    print("inside general llm")
-    print(result)
     return {"messages": [result], "retrieved_contexts": [], "final_answer": result.content}
 
 
@@ -142,8 +138,7 @@ def grade(state: State):
     llm_with_grade = llm.with_structured_output(Grade)
     chain_graded = grading_prompt | llm_with_grade
     result = chain_graded.invoke({"question": question, "context": context})
-
-    print(result)
+    print(f"[grade] binary_score={result.binary_score}")
     return {"messages": state["messages"], "binary_score": result.binary_score}
 
 
@@ -165,7 +160,7 @@ def rewrite_query(state: State):
     )
     chain = rewrite_prompt | llm
     result = chain.invoke({"query": query})
-    print(result)
+    print("[rewrite_query] query rewritten")
     return {
         "latest_query": result.content,
         "rewrite_count": rewrite_count  # persist counter in state
@@ -211,7 +206,7 @@ def web_search(state: State):
     search_tool = TavilySearchResults()
     result = search_tool.invoke(state["latest_query"])
     contents = [item["content"] for item in result if "content" in item]
-    print(contents)
+    print(f"[web_search] retrieved {len(contents)} result snippets")
     joined_content = "\n\n".join(contents)
     return {
         "messages": [{"role": "assistant", "content": joined_content}],
